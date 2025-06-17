@@ -10,9 +10,7 @@ In our information-rich digital age, we consume vast amounts of content daily th
 - Identify knowledge gaps in your learning journey
 - Leverage AI to understand and connect your personal knowledge
 
-MindCanvas solves this by transforming your browsing data into an intelligent, searchable knowledge network powered by AI.
-=======
-MindCanvas solves this by transforming your data into an intelligent, searchable knowledge network powered by AI.
+**MindCanvas solves this by transforming your data into an intelligent, searchable knowledge network powered by AI.**
 
 ## ✨ Features
 
@@ -22,20 +20,7 @@ MindCanvas solves this by transforming your data into an intelligent, searchable
 - **RAG Chatbot**: Ask questions about your knowledge in natural language
 - **Chrome Extension**: One-click data export and processing
 
-## Preview:
-  
-![hp1](https://github.com/user-attachments/assets/9a70a39e-89da-46f3-9bca-dbe945536fea)
-
-![hp2](https://github.com/user-attachments/assets/ce2101b9-3c67-4a44-a19f-8c2310f85bc3)
-
-![hp3](https://github.com/user-attachments/assets/09d94254-2d81-4b9e-ad29-2ef83cf78369)
-
-![hp4](https://github.com/user-attachments/assets/12632190-9177-475e-8162-0f72ed2977f3)
-
-![bg5](https://github.com/user-attachments/assets/74d70fca-4fd0-4a69-b25f-556361c02d4b)
-
-=======
-## Preview
+## 📸 Preview
 
 ![hp1](https://github.com/user-attachments/assets/74b813d9-681e-424d-b0c4-78eba019f4e8)
 
@@ -46,7 +31,6 @@ MindCanvas solves this by transforming your data into an intelligent, searchable
 ![hp4](https://github.com/user-attachments/assets/22885336-8730-4cd3-aa86-1765be12320d)
 
 ![bg5](https://github.com/user-attachments/assets/91a6d30a-56a8-4b82-876e-ce0225dcc209)
-
 
 ## 🏗️ Architecture
 
@@ -133,10 +117,9 @@ Frontend runs on `http://localhost:3000`
 
 ## 💡 Usage
 
-### Export Your data
+### Export Your Data
 
 1. Click the MindCanvas extension icon
-2. Click "Export data (24h)"
 2. Click "Export Data (24h)"
 3. Wait for processing to complete
 
