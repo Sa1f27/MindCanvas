@@ -190,7 +190,7 @@ Frontend runs on `http://localhost:3000`
 ## ⚙️ Configuration
 
 ### API Keys Required
-- **OpenAI API Key**: For GPT-4 processing and embeddings
+- **OpenAI API Key**: For GPT-5 processing and embeddings
 - **Groq API Key**: For Llama model processing (optional)
 - **Supabase Credentials**: For vector database storage
 
