@@ -19,19 +19,19 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 logger = logging.getLogger(__name__)
 
 # -----------------------------
-# Pydantic Models for API Data Structures
+# Pydantic Models
 # -----------------------------
 
 
 class ChatMessage(BaseModel):
-    """Represents a single message in a conversation."""
+    """A single message in a conversation."""
     role: str  # 'user', 'assistant', or 'system'
     content: str
     timestamp: Optional[datetime] = None
 
 
 class ChatRequest(BaseModel):
-    """Defines the structure for an incoming chat request from the client."""
+    """An incoming chat request from the client."""
     message: str
     conversation_history: List[ChatMessage] = Field(default_factory=list)
     use_rag: bool = True
@@ -41,7 +41,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Defines the structure for a chat response sent back to the client."""
+    """A chat response sent back to the client."""
     response: str
     sources: List[Dict[str, Any]] = Field(default_factory=list)
     confidence: float = 0.0
@@ -51,7 +51,7 @@ class ChatResponse(BaseModel):
 
 
 class SourceCitation(BaseModel):
-    """Represents a cited source used to generate a response."""
+    """A cited source for a response."""
     title: str
     url: str
     content_type: str = Field(default="")
@@ -62,7 +62,7 @@ class SourceCitation(BaseModel):
 
 @dataclass
 class KnowledgeContext:
-    """Internal representation of a piece of knowledge retrieved from the database."""
+    """Internal representation of retrieved knowledge."""
     content: str
     title: str
     url: str
@@ -73,14 +73,13 @@ class KnowledgeContext:
 
 
 # -----------------------------
-# Lightweight Conversation Memory (to avoid heavy LangChain dependencies)
+# Lightweight Conversation Memory
 # -----------------------------
 
 
 class _SimpleChatHistory:
     """
-    A minimal, dependency-free replacement for LangChain's ChatMessageHistory.
-    This class holds a list of messages in a format compatible with the LLM.
+    Minimal, dependency-free message history holder.
     """
 
     def __init__(self) -> None:
@@ -98,8 +97,7 @@ class _SimpleChatHistory:
 
 class _SimpleConversationMemory:
     """
-    A lightweight, dependency-free replacement for LangChain's ConversationBufferMemory.
-    It manages the chat history for a single conversation session.
+    Lightweight, dependency-free conversation memory manager.
     """
 
     def __init__(self) -> None:
@@ -115,23 +113,14 @@ class _SimpleConversationMemory:
 
 
 class RAGChatbot:
-    """
-    The core class for the Retrieval-Augmented Generation (RAG) chatbot.
-
-    This class orchestrates the entire chat process, including:
-    - Managing conversation history.
-    - Retrieving relevant context from the vector database (the 'R' in RAG).
-    - Generating responses using a Large Language Model (the 'G' in RAG).
-    - Handling both RAG-enabled and standard conversational queries.
-    """
+    """Core class for the Retrieval-Augmented Generation (RAG) chatbot."""
     def __init__(self, db, openai_key: Optional[str] = None, groq_key: Optional[str] = None):
         self.db = db
         self.client = db.client
         self.openai_api_key = openai_key
 
         # Initialize the Large Language Model (LLM) client.
-        # We use ChatOpenAI from langchain_openai. The model can be changed (e.g., to "gpt-4o-mini")
-        # to balance cost and performance.
+        # Model can be changed (e.g., to "gpt-4o-mini") to balance cost/performance.
         self.llm = ChatOpenAI(
             model="gpt-4.1", # A powerful model for high-quality responses.
             temperature=0.3,
@@ -158,7 +147,7 @@ Guidelines:
 
 Context: You have access to the user's processed web content including summaries, topics, and quality scores."""
 
-        # This prompt is used specifically when RAG context is available.
+        # Prompt used when RAG context is available.
         self.rag_system_prompt = """You are answering based on the user's personal knowledge base. Use the provided context to give accurate, helpful responses.
 
 IMPORTANT RULES:
@@ -171,7 +160,7 @@ IMPORTANT RULES:
 
 The context includes content the user has previously browsed, with summaries and quality ratings."""
 
-        # A dictionary to store conversation histories, keyed by a unique conversation ID.
+        # Stores conversation histories, keyed by conversation ID.
         self.conversation_memories: Dict[str, _SimpleConversationMemory] = {}
 
     # -------------------------
@@ -181,10 +170,7 @@ The context includes content the user has previously browsed, with summaries and
     async def process_chat_request(self, request: ChatRequest) -> ChatResponse:
         """
         Main chat processing pipeline:
-        1. Manages conversation state using a conversation ID.
-        2. Retrieves relevant context from the database if RAG is enabled.
-        3. Constructs a prompt with the user's query, history, and context.
-        4. Generates a response using the LLM.
+        Manages conversation, retrieves context (if RAG), and generates a response.
         """
         query_preview = request.message[:80] + "..." if len(request.message) > 80 else request.message
         start_time = datetime.now()
@@ -193,13 +179,13 @@ The context includes content the user has previously browsed, with summaries and
             # Conversation ID
             conversation_id = request.conversation_id or f"chat_{int(datetime.now().timestamp())}"
 
-            # Initialize memory for a new conversation if it doesn't exist.
+            # Init memory for new conversation.
             if conversation_id not in self.conversation_memories:
                 self.conversation_memories[conversation_id] = _SimpleConversationMemory()
 
             memory = self.conversation_memories[conversation_id]
 
-            # Sync the incoming conversation history from the request into our internal memory.
+            # Sync incoming history into internal memory.
             if request.conversation_history:
                 memory.clear()
                 for msg in request.conversation_history:
@@ -209,12 +195,12 @@ The context includes content the user has previously browsed, with summaries and
                         memory.chat_memory.add_ai_message(msg.content)
                     # System messages are encoded as system prompts already
 
-            # Step 1: RAG Retrieval. Fetch relevant documents if RAG is enabled.
+            # Step 1: RAG Retrieval.
             context_items: List[KnowledgeContext] = []
             sources: List[Dict[str, Any]] = []
 
             if request.use_rag:
-                # Retrieve documents from the vector database that are relevant to the user's message.
+                # Retrieve relevant documents from the vector DB.
                 logger.info(f"RAG: enabled for query: \"{query_preview}\"")
                 docs = await self._retrieve_relevant_context(
                     request.message,
@@ -229,7 +215,7 @@ The context includes content the user has previously browsed, with summaries and
             else:
                 logger.info(f"RAG: disabled for query: \"{query_preview}\"")
 
-            # Step 2: Generate a response from the LLM, providing the retrieved context.
+            # Step 2: Generate LLM response with context.
             response_text, tokens_used, confidence = await self._generate_response(
                 request.message,
                 context_items,
@@ -263,9 +249,6 @@ The context includes content the user has previously browsed, with summaries and
     ) -> List[KnowledgeContext]:
         """
         Retrieve relevant content from the vector database using semantic search.
-
-        This method queries the `SimpleVectorDB` to find content that is semantically
-        similar to the user's query.
         """
         query_preview = query[:80] + "..." if len(query) > 80 else query
         logger.info(f"RAG: retrieving context for query: \"{query_preview}\"")
@@ -284,7 +267,7 @@ The context includes content the user has previously browsed, with summaries and
 
             context_items: List[KnowledgeContext] = []
 
-            # For each search result, fetch the full content to provide to the LLM.
+            # For each result, fetch full content for the LLM.
             for result in results:
                 def _fetch_content():
                     return (
@@ -301,7 +284,7 @@ The context includes content the user has previously browsed, with summaries and
                 if data and len(data) > 0:
                     content = data[0].get("content", "") or ""
 
-                # Create a structured KnowledgeContext object.
+                # Create a structured context object.
                 context_item = KnowledgeContext(
                     content=content,
                     title=result.get("title", "Untitled"),
@@ -334,10 +317,7 @@ The context includes content the user has previously browsed, with summaries and
     ) -> tuple[str, int, float]:
         """
         Generate response using ChatOpenAI.
-
-        If context is provided (RAG path), it's injected into the prompt.
-        If not (non-RAG path), the model answers based on its general knowledge.
-        """
+        If context is provided, it's injected into the prompt (RAG path)."""
         query_preview = query[:80] + "..." if len(query) > 80 else query
         logger.info(
             f"RAG Generate: generating response for \"{query_preview}\" "
@@ -381,7 +361,7 @@ The context includes content the user has previously browsed, with summaries and
                 logger.error(f"Chat completion (non-RAG) failed: {e}", exc_info=True)
                 return self._generate_fallback_response(query, []), 0, 0.1
 
-        # This is the RAG path, where context is used.
+        # RAG path: context is used.
         try:
             context_str = self._build_context_string(context_items)
 
@@ -398,7 +378,7 @@ The context includes content the user has previously browsed, with summaries and
 
             chat_history = memory.chat_memory.messages
 
-            # Construct the final list of messages for the LLM.
+            # Construct the final message list for the LLM.
             messages = [
                 SystemMessage(content=self.rag_system_prompt),
                 *chat_history,
@@ -413,7 +393,7 @@ The context includes content the user has previously browsed, with summaries and
             response = await self.llm.ainvoke(messages)
             response_text = response.content
 
-            # Extract token usage metadata from the response.
+            # Extract token usage from response metadata.
             usage = getattr(response, "usage_metadata", None) or {}
             tokens_used = (
                 usage.get("total_tokens")
@@ -426,7 +406,7 @@ The context includes content the user has previously browsed, with summaries and
 
             confidence = self._calculate_confidence(context_items, response_text)
 
-            # Update the conversation memory with the latest user query and AI response.
+            # Update conversation memory.
             memory.chat_memory.add_user_message(query)
             memory.chat_memory.add_ai_message(response_text)
 
@@ -442,9 +422,7 @@ The context includes content the user has previously browsed, with summaries and
 
     def _build_context_string(self, context_items: List[KnowledgeContext]) -> str:
         """
-        Build a formatted string from the retrieved context items to be injected
-        into the LLM prompt.
-        """
+        Build a formatted string from context items for the LLM prompt."""
         if not context_items:
             return ""
 
@@ -471,11 +449,8 @@ Relevance: {item.similarity:.2f}
         response: str,
     ) -> float:
         """
-        Calculate a heuristic confidence score for the generated response.
-
-        The score is based on the average similarity and quality of the source context,
-        and whether the response includes citations.
-        """
+        Calculate a heuristic confidence score for the response.
+        Score is based on context similarity, quality, and response citations."""
         if not context_items:
             return 0.3
 
@@ -500,9 +475,7 @@ Relevance: {item.similarity:.2f}
     ) -> str:
         """
         Generate a helpful fallback response when the main LLM call fails.
-
-        If context was found, it points the user to the sources. If not, it provides general guidance.
-        """
+        If context was found, it points to sources; otherwise, gives general guidance."""
         if context_items:
             sources_info = "\n".join(
                 [f"- {item.title} ({item.content_type})" for item in context_items[:3]]
@@ -525,9 +498,7 @@ Relevance: {item.similarity:.2f}
 
     def _format_source(self, context_item: KnowledgeContext) -> Dict[str, Any]:
         """
-        Format a KnowledgeContext object into a serializable dictionary
-        suitable for the API response.
-        """
+        Format a KnowledgeContext object into a serializable dict for the API response."""
         summary = context_item.summary or ""
         if len(summary) > 200:
             summary = summary[:200] + "..."
@@ -547,10 +518,7 @@ Relevance: {item.similarity:.2f}
 
     async def get_suggested_questions(self, limit: int = 5) -> List[str]:
         """
-        Generate a list of suggested questions for the user to ask.
-
-        These suggestions are based on high-quality content and common topics found in the user's knowledge base.
-        """
+        Generate suggested questions based on high-quality content and topics."""
         try:
             def _fetch():
                 return (
@@ -624,10 +592,7 @@ Relevance: {item.similarity:.2f}
         conversation_history: List[ChatMessage],
     ) -> Dict[str, Any]:
         """
-        Analyzes the conversation history to provide simple insights.
-
-        This is a basic implementation that extracts common keywords to identify topics and patterns.
-        """
+        Analyzes conversation history for simple insights by extracting keywords."""
         try:
             user_messages = [msg.content for msg in conversation_history if msg.role == "user"]
             if not user_messages:
