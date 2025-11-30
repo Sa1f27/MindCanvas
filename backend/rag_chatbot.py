@@ -122,43 +122,33 @@ class RAGChatbot:
         # Initialize the Large Language Model (LLM) client.
         # Model can be changed (e.g., to "gpt-4o-mini") to balance cost/performance.
         self.llm = ChatOpenAI(
-            model="gpt-5.1", # A powerful model for high-quality responses.
+            model="gpt-5.1", # A powerful and efficient model for high-quality responses.
             temperature=0.3,
             api_key=openai_key,  # or rely on env OPENAI_API_KEY
         )
 
         # System prompts
-        self.system_prompt = """You are MindCanvas AI, an intelligent knowledge assistant that helps users explore and understand their personal knowledge graph.
+        self.system_prompt = """You are MindCanvas AI, a helpful assistant for exploring personal knowledge.
 
-Your capabilities:
-- Answer questions using the user's browsing history and saved content
-- Provide insights about learning patterns and knowledge gaps
-- Suggest related content and learning paths
-- Summarize complex topics from multiple sources
-- Help with research and knowledge discovery
+When answering, assume you are speaking to a user about their knowledge base. However, for this specific query, no relevant documents were found in their knowledge base.
 
 Guidelines:
-- Always cite sources when providing information using format [Source: Title]
-- Be conversational but precise
-- If information is not in the knowledge base, clearly state this
-- Suggest related topics when appropriate
-- Help users discover connections between different concepts
-- Provide actionable insights and recommendations
-
-Context: You have access to the user's processed web content including summaries, topics, and quality scores."""
+1. Answer the user's question based on your general knowledge.
+2. DO NOT invent sources or pretend to have context from the user's knowledge base.
+3. Clearly state that you are answering from general knowledge because no specific information was found in their MindCanvas.
+4. Be conversational and helpful, encouraging them to add more content to their knowledge base for more personalized answers in the future."""
 
         # Prompt used when RAG context is available.
-        self.rag_system_prompt = """You are answering based on the user's personal knowledge base. Use the provided context to give accurate, helpful responses.
+        self.rag_system_prompt = """You are MindCanvas AI, an intelligent assistant answering questions based *only* on the user's personal knowledge base.
 
 IMPORTANT RULES:
-1. Only use information from the provided context
-2. Always cite sources with [Source: Title]
-3. If the context doesn't contain enough information, say so clearly
-4. Connect related concepts when possible
-5. Provide practical insights and actionable advice
-6. Be conversational but accurate
+1. **Strictly Adhere to Context**: Your entire response MUST be based *exclusively* on the information provided in the 'Context' section. Do not use any outside knowledge.
+2. **Cite Everything**: For every piece of information you provide, you MUST cite the source using the format [Source: Title]. If you synthesize information from multiple sources, cite them all (e.g., [Source: Title A], [Source: Title B]).
+3. **Handle Missing Information**: If the provided context does not contain the answer to the user's question, you MUST state that the information is not available in their knowledge base. Do not try to answer from general knowledge.
+4. **Be a Helpful Synthesizer**: Your goal is to connect ideas, summarize findings, and provide insights based *only* on the given context.
+5. **Be Conversational**: While being accurate and citing sources, maintain a helpful and conversational tone.
 
-The context includes content the user has previously browsed, with summaries and quality ratings."""
+The user's question will be at the end. First, here is the context from their knowledge base:"""
 
         # Stores conversation histories, keyed by conversation ID.
         self.conversation_memories: Dict[str, _SimpleConversationMemory] = {}
@@ -332,12 +322,7 @@ The context includes content the user has previously browsed, with summaries and
             messages = [
                 SystemMessage(content=self.system_prompt),
                 HumanMessage(
-                    content=(
-                        "Question: "
-                        + query
-                        + "\n\nNote: I will answer based on general knowledge, "
-                        "as no specific MindCanvas knowledge-base context was found."
-                    )
+                    content=f"My question is: {query}"
                 ),
             ]
             try:
@@ -383,10 +368,7 @@ The context includes content the user has previously browsed, with summaries and
                 SystemMessage(content=self.rag_system_prompt),
                 *chat_history,
                 HumanMessage(
-                    content=(
-                        f"Context from my knowledge base:\n{context_str}\n\n"
-                        f"Question: {query}"
-                    )
+                    content=f"Context:\n{context_str}\n\n---\n\nBased on the context above, please answer this question: {query}"
                 ),
             ]
 
