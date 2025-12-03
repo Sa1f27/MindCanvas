@@ -122,7 +122,7 @@ class RAGChatbot:
         # Initialize the Large Language Model (LLM) client.
         # Model can be changed (e.g., to "gpt-4o-mini") to balance cost/performance.
         self.llm = ChatOpenAI(
-            model="gpt-5.1", # A powerful and efficient model for high-quality responses.
+            model="gpt-5.1", 
             temperature=0.3,
             api_key=openai_key,  # or rely on env OPENAI_API_KEY
         )
