@@ -17,10 +17,10 @@ import numpy as np
 from langchain_openai import OpenAIEmbeddings
 
 logger = logging.getLogger(__name__)
-
+# https://bullbuypcoxanscxevrq.supabase.co
 # Configuration
-SUPABASE_URL = "https://udodfabokrxcfnskailb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkb2RmYWJva3J4Y2Zuc2thaWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MjE0MzIsImV4cCI6MjA2NTM5NzQzMn0.EMOqo4_wxkdw7NHnZoXq2AEk5bGRiPsm8ZIj5gbL_io"
+SUPABASE_URL = "https://bullbuypcoxanscxevrq.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bGxidXlwY294YW5zY3hldnJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MDYxOTAsImV4cCI6MjA4MTI4MjE5MH0.APREjg7pPNHjQl_ZVXx_ZcH8qDbxs0fY2HMlihhC4bQ"
 
 @dataclass
 class ContentItem:
@@ -655,11 +655,14 @@ class SimpleVectorDB:
             'timestamp': datetime.now().isoformat()
         }
         if error_message:
-            return_payload['error'] = error_message
             return {
-                'status': 'unhealthy', 'error': str(e), 'timestamp': datetime.now().isoformat()
+                'status': 'unhealthy',
+                'error': error_message,
+                'timestamp': datetime.now().isoformat()
             }
+
         return return_payload
+
 
     def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
         """Calculate cosine similarity between two vectors"""
