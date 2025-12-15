@@ -953,8 +953,13 @@ async def health_check():
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Mount static files for frontend
 try:
-    app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
-    logger.info("✅ Static files mounted")
+    # Point to sibling directory ../frontend/build
+    frontend_build_dir = os.path.join(os.path.dirname(BASE_DIR), "frontend", "build")
+    if os.path.exists(frontend_build_dir):
+        app.mount("/static", StaticFiles(directory=frontend_build_dir), name="static")
+        logger.info(f"✅ Static files mounted from {frontend_build_dir}")
+    else:
+        logger.warning(f"⚠️ Static files directory not found at: {frontend_build_dir}")
 except Exception as e:
     logger.warning(f"⚠️ Static files not mounted: {e}")
 

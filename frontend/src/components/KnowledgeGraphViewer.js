@@ -1,8 +1,14 @@
-// src/components/KnowledgeGraphViewer.js - Back to the simple, working version
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+// Enhanced KnowledgeGraphViewer with semantic clustering and intelligent layout
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import cytoscape from 'cytoscape';
+import fcose from 'cytoscape-fcose';
+import dagre from 'cytoscape-dagre'; // 1. Import dagre
+
+// Register layouts
+cytoscape.use(fcose);
+cytoscape.use(dagre); // 2. Register dagre
 
 const GraphContainer = styled.div`
   width: 100%;
@@ -48,56 +54,147 @@ const LoadingSpinner = styled(motion.div)`
   }
 `;
 
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.6);
-  padding: 40px;
+const LegendContainer = styled.div`
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(15px);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 0.85rem;
+  max-width: 280px;
+  z-index: 100;
   
-  .icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
+  .legend-title {
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #667eea;
+    font-size: 0.9rem;
   }
   
-  .title {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-    color: rgba(255, 255, 255, 0.8);
+  .legend-section {
+    margin-bottom: 12px;
+    
+    .section-title {
+      font-weight: 500;
+      margin-bottom: 6px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
   }
   
-  .description {
-    line-height: 1.5;
-    max-width: 400px;
-    margin-bottom: 1.5rem;
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
+    
+    .color-box {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
   }
   
-  .debug-info {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 10px;
-    border-radius: 8px;
-    font-family: monospace;
-    font-size: 0.8rem;
-    margin-top: 10px;
+  .edge-legend {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+    margin-top: 8px;
+    
+    .edge-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      
+      .edge-line {
+        width: 24px;
+        height: 2px;
+        background: currentColor;
+      }
+    }
   }
 `;
 
-// Simple color scheme for different content types
-const NODE_COLORS = {
-  'Tutorial': '#ff6b6b',
-  'Documentation': '#4ecdc4', 
-  'Article': '#9b59b6',
-  'Blog': '#f39c12',
-  'Research': '#e67e22',
-  'News': '#e74c3c',
-  'Video': '#3498db',
-  'Book': '#2ecc71',
-  'Unknown': '#667eea',
-  'Web Content': '#95a5a6'
+// Semantic color mapping based on content analysis
+const getSemanticColor = (node) => {
+  const title = (node.name || node.title || '').toLowerCase();
+  const topics = (node.topics || node.key_topics || []).join(' ').toLowerCase();
+  const type = (node.type || node.content_type || '').toLowerCase();
+  const allText = `${title} ${topics} ${type}`;
+  
+  // Machine Learning / AI
+  if (/\b(ai|machine learning|neural|deep learning|ml|tensorflow|pytorch|model|algorithm|data science)\b/.test(allText)) {
+    return '#ff4757'; // Bright red
+  }
+  
+  // Programming Languages - JavaScript
+  if (/\b(javascript|js|node\.?js|react|vue|angular|typescript|npm)\b/.test(allText)) {
+    return '#f7df1e'; // JavaScript yellow
+  }
+  
+  // Programming Languages - Python
+  if (/\b(python|django|flask|numpy|pandas|jupyter|pip)\b/.test(allText)) {
+    return '#3776ab'; // Python blue
+  }
+  
+  // Web Development
+  if (/\b(web dev|html|css|frontend|backend|api|http|rest)\b/.test(allText)) {
+    return '#00d2d3'; // Cyan
+  }
+  
+  // Database
+  if (/\b(database|sql|mongodb|postgres|mysql|nosql|query)\b/.test(allText)) {
+    return '#00a085'; // Teal
+  }
+  
+  // DevOps / Cloud
+  if (/\b(devops|docker|kubernetes|aws|cloud|deployment|ci\/cd)\b/.test(allText)) {
+    return '#2ed573'; // Green
+  }
+  
+  // Design / UI/UX
+  if (/\b(design|ui|ux|figma|photoshop|graphics|typography)\b/.test(allText)) {
+    return '#ff6348'; // Orange-red
+  }
+  
+  // Mobile Development
+  if (/\b(mobile|android|ios|react native|flutter|swift|kotlin)\b/.test(allText)) {
+    return '#ff6b9d'; // Pink
+  }
+  
+  // Data Science / Analytics
+  if (/\b(data science|analytics|visualization|statistics|big data)\b/.test(allText)) {
+    return '#a55eea'; // Light purple
+  }
+  
+  // Security
+  if (/\b(security|cybersecurity|encryption|authentication)\b/.test(allText)) {
+    return '#ff3838'; // Red
+  }
+  
+  // Education / Tutorial
+  if (/\b(tutorial|course|learning|education|beginner|guide)\b/.test(allText)) {
+    return '#3742fa'; // Blue
+  }
+  
+  // Content type fallback
+  const typeColors = {
+    'Tutorial': '#4ecdc4',
+    'Documentation': '#9b59b6',
+    'Article': '#f39c12',
+    'Blog': '#e67e22',
+    'Research': '#e74c3c',
+    'News': '#c0392b'
+  };
+  
+  return typeColors[node.content_type || node.type] || '#667eea';
 };
 
 const KnowledgeGraphViewer = ({
@@ -105,122 +202,55 @@ const KnowledgeGraphViewer = ({
   selectedNode,
   onNodeSelect,
   onBackgroundClick,
-  layout = 'cose',
+  layout = 'dagre', // <--- SWITCHED DEFAULT LAYOUT TO DAGRE
   className,
   ...props
 }) => {
   const containerRef = useRef(null);
   const cyRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [clusterInfo, setClusterInfo] = useState({});
 
-  console.log('🎯 KnowledgeGraphViewer render:', { 
-    hasData: !!data, 
-    nodeCount: data?.nodes?.length || 0,
-    edgeCount: data?.links?.length || 0
-  });
-
-  // Enhanced clustering with more specific keywords
+  // Process graph data with enhanced clustering awareness
   const graphData = useMemo(() => {
-    console.log('🎯 Processing graph data:', data);
-    
     if (!data || !data.nodes || !Array.isArray(data.nodes)) {
-      console.log('❌ No valid data provided');
-      return { nodes: [], edges: [] };
+        return { nodes: [], edges: [] };
     }
 
-    // More specific and comprehensive clustering keywords
-    const clusterKeywords = {
-      'JavaScript': ['javascript', 'js', 'node.js', 'nodejs', 'react', 'vue', 'angular', 'typescript', 'npm', 'express', 'next.js', 'webpack', 'babel'],
-      'Python': ['python', 'django', 'flask', 'numpy', 'pandas', 'jupyter', 'pip', 'scipy', 'matplotlib', 'python3', 'py'],
-      'AI/ML': ['ai', 'artificial intelligence', 'machine learning', 'neural', 'deep learning', 'ml', 'tensorflow', 'pytorch', 'model', 'algorithm', 'data science'],
-      'Web Development': ['web dev', 'html', 'css', 'frontend', 'backend', 'api', 'http', 'rest', 'bootstrap', 'sass', 'responsive'],
-      'Programming': ['programming', 'coding', 'software', 'development', 'tutorial', 'guide', 'basics', 'fundamentals'],
-      'Database': ['database', 'sql', 'mongodb', 'postgres', 'mysql', 'nosql', 'query'],
-      'Mobile Development': ['mobile', 'android', 'ios', 'react native', 'flutter', 'swift', 'kotlin', 'app development'],
-      'DevOps': ['devops', 'docker', 'kubernetes', 'aws', 'cloud', 'deployment', 'ci/cd', 'jenkins', 'infrastructure'],
-      'Data Science': ['data science', 'analytics', 'visualization', 'statistics', 'big data', 'analysis'],
-      'Design': ['design', 'ui', 'ux', 'figma', 'photoshop', 'graphics', 'typography', 'sketch', 'user interface'],
-      'Mathematics': ['math', 'mathematics', 'calculus', 'algebra', 'statistics', 'probability', 'geometry', 'linear algebra'],
-      'Education': ['tutorial', 'course', 'learning', 'education', 'beginner', 'basics', 'fundamentals', 'guide', 'class', 'lesson'],
-      'Gaming': ['game', 'gaming', 'unity', 'unreal', 'gamedev', 'game development'],
-      'Security': ['security', 'cybersecurity', 'encryption', 'authentication', 'vulnerability']
-    };
-
-    // Vibrant, distinct colors for better clustering visibility
-    const clusterColors = {
-      'JavaScript': '#f7df1e',           // Bright yellow
-      'Python': '#3776ab',              // Python blue
-      'AI/ML': '#ff4757',               // Bright red
-      'Web Development': '#00d2d3',     // Cyan
-      'Programming': '#5f27cd',         // Purple
-      'Database': '#00a085',            // Teal
-      'Mobile Development': '#ff6b9d',   // Pink
-      'DevOps': '#2ed573',              // Green
-      'Data Science': '#a55eea',        // Light purple
-      'Design': '#ff6348',              // Orange-red
-      'Mathematics': '#ffa502',         // Orange
-      'Education': '#3742fa',           // Blue
-      'Gaming': '#2f3542',              // Dark gray
-      'Security': '#ff3838',            // Red
-      'General': '#667eea'              // Default
-    };
-
-    // Smarter clustering function
-    const getNodeCluster = (node) => {
-      const title = (node.name || node.title || '').toLowerCase();
-      const topics = (node.topics || node.key_topics || []).join(' ').toLowerCase();
-      const type = (node.type || node.content_type || '').toLowerCase();
-      const summary = (node.summary || node.description || '').toLowerCase();
-      
-      // Combine all text for analysis
-      const allText = `${title} ${topics} ${type} ${summary}`.toLowerCase();
-
-      // Find the best matching cluster with priority scoring
-      let bestMatch = 'General';
-      let maxScore = 0;
-
-      for (const [cluster, keywords] of Object.entries(clusterKeywords)) {
-        let score = 0;
-        
-        // Count keyword matches with different weights
-        keywords.forEach(keyword => {
-          if (title.includes(keyword)) score += 3; // Title matches are most important
-          else if (topics.includes(keyword)) score += 2; // Topic matches are important
-          else if (allText.includes(keyword)) score += 1; // General matches
-        });
-
-        if (score > maxScore) {
-          maxScore = score;
-          bestMatch = cluster;
-        }
-      }
-
-      return bestMatch;
-    };
-
-    // Process nodes with better clustering
+    const clusters = {};
+    
     const nodes = data.nodes.map((node, index) => {
       const nodeId = node.id?.toString() || `node-${index}`;
       const label = node.title || node.name || `Node ${index + 1}`;
-      const cluster = getNodeCluster(node);
       const quality = node.quality || node.quality_score || 5;
+      const color = getSemanticColor(node);
       
-      // Slightly smaller nodes for better clustering view
-      const nodeSize = Math.max(18, Math.min(32, quality * 2 + 12));
+      const topics = node.topics || node.key_topics || [];
+      const primaryTopic = topics[0] || 'General';
+      
+      if (!clusters[primaryTopic]) {
+        clusters[primaryTopic] = [];
+      }
+      clusters[primaryTopic].push(nodeId);
+      
+      const nodeSize = Math.max(20, Math.min(40, quality * 3 + 14));
       
       return {
         data: {
           id: nodeId,
-          label: label.length > 12 ? label.substring(0, 12) + '...' : label,
-          color: clusterColors[cluster] || clusterColors.General,
+          label: label.length > 18 ? label.substring(0, 18) + '...' : label, 
+          color: color,
           size: nodeSize,
-          cluster: cluster,
+          quality: quality,
+          topics: topics,
+          cluster: primaryTopic,
           originalData: node
         }
       };
     });
 
-    // Create edges with validation
+    setClusterInfo(clusters);
+
     const edges = [];
     if (data.links && Array.isArray(data.links)) {
       data.links.forEach((link, index) => {
@@ -232,11 +262,30 @@ const KnowledgeGraphViewer = ({
           const targetExists = nodes.some(n => n.data.id === target);
           
           if (sourceExists && targetExists) {
+            const edgeType = link.type || 'default';
+            const similarity = link.similarity || 0.5;
+            
+            let edgeColor = 'rgba(255, 255, 255, 0.2)';
+            let edgeWidth = 1;
+            
+            if (edgeType === 'topic' || similarity > 0.7) {
+              edgeColor = 'rgba(102, 126, 234, 0.7)';
+              edgeWidth = 2.5;
+            } else if (edgeType === 'semantic' || similarity > 0.5) {
+              edgeColor = 'rgba(255, 255, 255, 0.45)';
+              edgeWidth = 1.8;
+            }
+            
             edges.push({
               data: {
                 id: `edge-${index}`,
                 source: source,
-                target: target
+                target: target,
+                weight: link.weight || 1,
+                similarity: similarity,
+                type: edgeType,
+                color: edgeColor,
+                width: edgeWidth
               }
             });
           }
@@ -244,36 +293,22 @@ const KnowledgeGraphViewer = ({
       });
     }
 
-    // Log clustering for debugging
-    const clusterCounts = nodes.reduce((acc, node) => {
-      const cluster = node.data.cluster;
-      acc[cluster] = (acc[cluster] || 0) + 1;
-      return acc;
-    }, {});
-
-    console.log('✅ Enhanced clustering results:', clusterCounts);
     return { nodes, edges };
   }, [data]);
-
-  // Initialize Cytoscape ONLY when data changes - prevent constant refreshing
+  
+  // Initialize Cytoscape with enhanced layout
   useEffect(() => {
     if (!containerRef.current || graphData.nodes.length === 0) {
-      console.log('❌ Cannot initialize: no container or no nodes');
       return;
     }
 
-    // Prevent multiple initializations
     if (isLoading) {
-      console.log('⏸️ Already loading, skipping initialization');
       return;
     }
 
-    console.log('🎯 Initializing Cytoscape...');
     setIsLoading(true);
 
-    // Clean up existing instance
     if (cyRef.current) {
-      console.log('🧹 Cleaning up existing Cytoscape instance');
       try {
         cyRef.current.destroy();
       } catch (error) {
@@ -282,7 +317,6 @@ const KnowledgeGraphViewer = ({
       cyRef.current = null;
     }
 
-    // Single initialization with proper cleanup
     const initTimeout = setTimeout(() => {
       if (!containerRef.current) {
         setIsLoading(false);
@@ -290,8 +324,6 @@ const KnowledgeGraphViewer = ({
       }
 
       try {
-        console.log('🎯 Creating Cytoscape instance');
-
         const cy = cytoscape({
           container: containerRef.current,
           elements: [...graphData.nodes, ...graphData.edges],
@@ -306,88 +338,106 @@ const KnowledgeGraphViewer = ({
                 'height': 'data(size)',
                 'text-valign': 'center',
                 'text-halign': 'center',
-                'font-size': '8px',
-                'font-weight': 'bold',
-                'color': 'white',
-                'text-outline-width': 1,
-                'text-outline-color': '#000',
-                'border-width': 1,
-                'border-color': 'rgba(255,255,255,0.4)',
-                'border-opacity': 0.6
+                'font-size': '10px', 
+                'font-weight': '600',
+                'color': '#ffffff',
+                'text-outline-width': 3, 
+                'text-outline-color': '#000000',
+                'border-width': 2,
+                'border-color': 'rgba(255,255,255,0.5)',
+                'border-opacity': 0.7,
+                'transition-property': 'border-width, border-color',
+                'transition-duration': '0.2s'
               }
             },
             {
               selector: 'node:hover',
               style: {
+                'border-width': 4,
+                'border-color': '#ffffff',
                 'border-opacity': 1,
-                'border-width': 2,
-                'border-color': '#fff'
+                'cursor': 'pointer'
               }
             },
             {
               selector: 'node:selected',
               style: {
-                'border-width': 3,
-                'border-color': '#fff',
-                'border-opacity': 1
+                'border-width': 5, 
+                'border-color': '#667eea',
+                'border-opacity': 1,
+                'z-index': 999
               }
             },
             {
               selector: 'edge',
               style: {
-                'width': 1,
-                'line-color': 'rgba(255, 255, 255, 0.3)',
-                'target-arrow-color': 'rgba(255, 255, 255, 0.3)',
+                'width': 'data(width)',
+                'line-color': 'data(color)',
+                'target-arrow-color': 'data(color)',
                 'target-arrow-shape': 'triangle',
-                'target-arrow-size': '6px',
-                'curve-style': 'bezier'
+                'target-arrow-size': '10px', 
+                'curve-style': 'bezier',
+                'opacity': 0.8
+              }
+            },
+            {
+              selector: 'edge:selected',
+              style: {
+                'line-color': '#667eea',
+                'target-arrow-color': '#667eea',
+                'width': 3.5,
+                'opacity': 1
               }
             }
           ],
           
-          layout: {
-            name: 'cose',
-            animate: false, // CRITICAL: No animation
+          layout: layout === 'dagre' ? {
+            name: 'dagre',
+            rankDir: 'TB', // Top-to-Bottom flow
+            spacingFactor: 1.5,
+            nodeSep: 60,
+            edgeSep: 10,
+            rankSep: 80,
+            padding: 50,
             fit: true,
-            padding: 60,
-            
-            // Better clustering parameters
-            nodeOverlap: 12,
-            idealEdgeLength: 60,
-            nodeRepulsion: 10000,
-            edgeElasticity: 0.15,
-            nestingFactor: 0.5,
-            gravity: 0.8,
-            gravityRange: 2.0,
-            
-            numIter: 1500,
-            initialTemp: 1200,
-            coolingFactor: 0.95,
-            minTemp: 1.0,
-            randomize: false, // CRITICAL: No randomization
-            
-            // Force stop after completion
+            animate: false,
             stop: function() {
-              console.log('🛑 Layout forced to stop');
+              console.log('Dagre layout completed');
+            }
+          } : {
+            name: 'fcose',
+            quality: 'proof',
+            animate: false,
+            fit: true,
+            padding: 50,
+            
+            nodeSeparation: 80, 
+            idealEdgeLength: 70, 
+            edgeElasticity: 0.2,
+            nestingFactor: 1.5,
+            gravity: 1.2, 
+            numIter: 3000, 
+            
+            tile: true,
+            tilingPaddingVertical: 40,
+            tilingPaddingHorizontal: 40,
+            
+            randomize: true, 
+            initialEnergyOnIncremental: 0.5,
+            
+            stop: function() {
+              console.log('FCoSE layout completed');
             }
           },
           
-          zoomingEnabled: true,
-          userZoomingEnabled: true,
-          panningEnabled: true,
-          userPanningEnabled: true,
-          boxSelectionEnabled: false,
-          selectionType: 'single',
-          
-          // Disable any auto-refresh triggers
-          autolock: false,
-          autoungrabify: false
+          minZoom: 0.3,
+          maxZoom: 3,
+          wheelSensitivity: 0.2
         });
 
         cyRef.current = cy;
-        console.log('✅ Cytoscape created successfully');
 
-        // Simple event listeners
+        // Event listeners
         cy.on('tap', 'node', (event) => {
           const node = event.target;
           const nodeData = node.data('originalData');
@@ -402,41 +452,34 @@ const KnowledgeGraphViewer = ({
           }
         });
 
-        // SINGLE layout completion handler
+        // Single layout completion
         cy.one('layoutstop', () => {
-          console.log('✅ Layout completed - STOPPING');
           setIsLoading(false);
-          
-          // Force stop any further layout calculations
           cy.stop();
           
-          // Fit once and done
           setTimeout(() => {
             try {
-              cy.fit(cy.nodes(), 50);
-              console.log('✅ Graph fitted - FINAL');
+              cy.fit(cy.nodes(), 40);
             } catch (error) {
               console.warn('Error fitting:', error);
             }
-          }, 50);
+          }, 100);
         });
 
-        // Emergency stop after 3 seconds
+        // Emergency stop
         setTimeout(() => {
           if (cyRef.current) {
-            console.log('🚨 Emergency stop - preventing infinite refresh');
             setIsLoading(false);
             cyRef.current.stop();
           }
-        }, 3000);
+        }, 5000);
 
       } catch (error) {
-        console.error('❌ Error creating Cytoscape:', error);
+        console.error('Error creating Cytoscape:', error);
         setIsLoading(false);
       }
-    }, 150);
+    }, 200);
 
-    // Cleanup
     return () => {
       clearTimeout(initTimeout);
       if (cyRef.current) {
@@ -448,40 +491,88 @@ const KnowledgeGraphViewer = ({
         cyRef.current = null;
       }
     };
-  }, [graphData.nodes.length, graphData.edges.length]); // ONLY depend on data length
+  }, [graphData.nodes.length, graphData.edges.length, layout]);
 
-  // Show empty state if no data
+  // Empty state
   if (!data || !data.nodes || data.nodes.length === 0) {
     return (
       <GraphContainer className={className} {...props}>
-        <EmptyState>
-          <div className="icon">🕸️</div>
-          <div className="title">No Graph Data</div>
-          <div className="description">
-            {!data ? 'No data provided to graph component' :
-             !data.nodes ? 'Data missing nodes array' :
-             'No nodes found in data'}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: 'rgba(255, 255, 255, 0.6)',
+          textAlign: 'center',
+          padding: '40px'
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.5 }}>🕸️</div>
+          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+            No Graph Data
           </div>
-          <div className="debug-info">
-            Debug Info:<br/>
-            {JSON.stringify({
-              hasData: !!data,
-              hasNodes: !!(data?.nodes),
-              nodeCount: data?.nodes?.length || 0,
-              hasLinks: !!(data?.links),
-              linkCount: data?.links?.length || 0
-            }, null, 2)}
+          <div style={{ lineHeight: 1.5, maxWidth: '400px' }}>
+            Start by importing your browsing history to build your knowledge graph
           </div>
-        </EmptyState>
+        </div>
       </GraphContainer>
     );
   }
+
+  // Get unique clusters for legend
+  const uniqueClusters = Object.keys(clusterInfo).slice(0, 8);
+  const clusterColors = uniqueClusters.map(cluster => {
+    const nodeInCluster = graphData.nodes.find(n => n.data.cluster === cluster);
+    return {
+      name: cluster,
+      color: nodeInCluster?.data.color || '#667eea',
+      count: clusterInfo[cluster]?.length || 0
+    };
+  });
 
   return (
     <GraphContainer className={className} {...props}>
       <GraphCanvas ref={containerRef} />
       
-      {/* Loading Spinner */}
+      <LegendContainer>
+        <div className="legend-title">🧠 Knowledge Clusters</div>
+        
+        <div className="legend-section">
+          <div className="section-title">Semantic Topics</div>
+          {clusterColors.map((cluster, idx) => (
+            <div key={idx} className="legend-item">
+              <div className="color-box" style={{ background: cluster.color }} />
+              <span>{cluster.name} ({cluster.count})</span>
+            </div>
+          ))}
+        </div>
+        
+        <div className="edge-legend">
+          <div className="section-title">Connection Strength</div>
+          <div className="edge-item">
+            <div className="edge-line" style={{ 
+              background: 'rgba(102, 126, 234, 0.8)',
+              height: '3px'
+            }} />
+            <span>Strong (Shared Topics)</span>
+          </div>
+          <div className="edge-item">
+            <div className="edge-line" style={{ 
+              background: 'rgba(255, 255, 255, 0.5)',
+              height: '2px'
+            }} />
+            <span>Medium (Semantic)</span>
+          </div>
+          <div className="edge-item">
+            <div className="edge-line" style={{ 
+              background: 'rgba(255, 255, 255, 0.2)',
+              height: '1px'
+            }} />
+            <span>Weak (Same Type)</span>
+          </div>
+        </div>
+      </LegendContainer>
+      
       <AnimatePresence>
         {isLoading && (
           <LoadingSpinner
@@ -490,7 +581,7 @@ const KnowledgeGraphViewer = ({
             exit={{ opacity: 0 }}
           >
             <div className="spinner" />
-            <div>Building graph...</div>
+            <div>Building semantic graph...</div>
           </LoadingSpinner>
         )}
       </AnimatePresence>
