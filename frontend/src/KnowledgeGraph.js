@@ -914,4 +914,4 @@ const EnhancedKnowledgeGraph = ({ data }) => {
   );
 };
 
-export default EnhancedKnowledgeGraph;1
+export default EnhancedKnowledgeGraph;

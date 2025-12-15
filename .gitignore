@@ -4,3 +4,9 @@ __pycache__/
 backend/.env
 yui/
 frontend/node_modules/
+package-lock.json
+.DS_Store
+.vscode/
+package.json
+.env
+node_modules/
