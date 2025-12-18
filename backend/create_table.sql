@@ -1,48 +1,54 @@
--- MindCanvas Database Table Creation
--- Run this in Supabase SQL Editor
--- Enable vector extension first
+-- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
--- Create main content table with vector support
+-- Create processed_content table
 CREATE TABLE IF NOT EXISTS processed_content (
     id BIGSERIAL PRIMARY KEY,
-    url TEXT UNIQUE NOT NULL,
+    url TEXT NOT NULL,
     title TEXT NOT NULL,
     summary TEXT,
     content TEXT,
-    content_type TEXT DEFAULT 'Web Content',
-    key_topics JSONB DEFAULT '[]'::jsonb,
-    quality_score INTEGER DEFAULT 5 CHECK (
-        quality_score >= 1
-        AND quality_score <= 10
-    ),
-    processing_method TEXT DEFAULT 'ai',
-    visit_timestamp TIMESTAMPTZ DEFAULT NOW(),
+    content_type TEXT,
+    key_topics JSONB,
+    quality_score INTEGER,
+    processing_method TEXT,
+    visit_timestamp TIMESTAMP,
     content_hash TEXT,
-    embedding vector(384),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    embedding VECTOR(1536),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
--- Create vector similarity index for fast search
-CREATE INDEX IF NOT EXISTS idx_content_embedding ON processed_content USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
--- Create other useful indexes
-CREATE INDEX IF NOT EXISTS idx_content_quality ON processed_content(quality_score DESC);
-CREATE INDEX IF NOT EXISTS idx_content_type ON processed_content(content_type);
-CREATE INDEX IF NOT EXISTS idx_content_created ON processed_content(created_at DESC);
--- Test the setup
-INSERT INTO processed_content (url, title, summary, content, embedding)
-VALUES (
-        'https://test.com',
-        'Test Content',
-        'This is a test',
-        'Test content for setup verification',
-        array_fill(0.1::real, ARRAY [384])::vector
-    );
--- Remove test data
-DELETE FROM processed_content
-WHERE url = 'https://test.com';
--- Verify table structure
-SELECT column_name,
-    data_type
-FROM information_schema.columns
-WHERE table_name = 'processed_content';
--- Success message
-SELECT 'MindCanvas table created successfully!' as status;
+-- Create index on embedding column
+CREATE INDEX IF NOT EXISTS processed_content_embedding_idx ON processed_content USING ivfflat (embedding vector_cosine_ops);
+-- Create vector search function
+CREATE OR REPLACE FUNCTION match_processed_content(
+        query_embedding vector(1536),
+        match_count int DEFAULT 5,
+        match_threshold float8 DEFAULT 0.3
+    ) RETURNS TABLE (
+        id bigint,
+        content text,
+        title text,
+        url text,
+        content_type text,
+        summary text,
+        key_topics jsonb,
+        quality_score int,
+        content_hash text,
+        similarity float8
+    ) LANGUAGE plpgsql AS $$ BEGIN RETURN QUERY
+SELECT pc.id,
+    pc.content,
+    pc.title,
+    pc.url,
+    pc.content_type,
+    pc.summary,
+    pc.key_topics,
+    pc.quality_score,
+    pc.content_hash,
+    1 - (pc.embedding <=> query_embedding) AS similarity
+FROM processed_content pc
+WHERE 1 - (pc.embedding <=> query_embedding) > match_threshold
+ORDER BY similarity DESC
+LIMIT match_count;
+END;
+$$;
