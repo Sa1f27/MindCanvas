@@ -105,14 +105,14 @@ const AppContainer = styled.div`
   display: grid;
   grid-template-areas:
     "left-panel main-graph right-panel";
-  grid-template-columns: 260px 1fr 300px; /* Reduced side panel width */
+  grid-template-columns: 240px 1fr 260px; /* Reduced side panel width */
   grid-template-rows: 1fr;
   gap: ${props => props.theme.spacing.sm};
   padding: ${props => props.theme.spacing.sm};
   flex-grow: 1; /* Allows AppContainer to fill #root if #root is flex */
   
   @media (max-width: 1400px) {
-    grid-template-columns: 240px 1fr 280px; /* Adjusted for medium screens */
+    grid-template-columns: 220px 1fr 240px; /* Adjusted for medium screens */
   }
   
   @media (max-width: 1200px) {
@@ -149,7 +149,7 @@ const MainGraphArea = styled(motion.div)`
 const SidePanel = styled(motion.div)`
   display: flex;
   flex-direction: column;
-  gap: ${props => props.theme.spacing.md};
+  gap: ${props => props.theme.spacing.sm};
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
@@ -187,6 +187,7 @@ const ChatbotArea = styled(motion.div)`
   overflow: hidden; /* Keep overflow hidden for the ChatbotPanel's internal scroll */
   flex: 1;
   min-height: 400px;
+  max-height: 60vh;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -361,13 +362,13 @@ const PanelHeaderTitle = styled(motion.div)`
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: ${props => props.theme.borderRadius.lg};
-  padding: ${props => props.theme.spacing.lg};
+  padding: ${props => props.theme.spacing.md};
   border: 1px solid ${props => props.theme.colors.border};
   margin-bottom: ${props => props.theme.spacing.md};
   margin-top: 0;
   
   h1 {
-    font-size: 1.8rem; /* Adjusted size for panel */
+    font-size: 1.4rem; /* Adjusted size for panel */
     margin-bottom: ${props => props.theme.spacing.xs};
     background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
     -webkit-background-clip: text;
@@ -375,7 +376,7 @@ const PanelHeaderTitle = styled(motion.div)`
     background-clip: text;
   }
   .subtitle {
-    font-size: 0.9rem; /* Adjusted size for panel */
+    font-size: 0.8rem; /* Adjusted size for panel */
     opacity: 0.8;
   }
 `;
@@ -709,13 +710,6 @@ const App = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
           style={{ gridArea: 'right-panel' }}
         >
-          {recommendationsData.length > 0 && (
-            <StatisticsPanel
-              title=" Recommendations"
-              type="recommendations"
-              data={recommendationsData}
-            />
-          )}
           <ChatbotArea
             initial={{ y: 50, opacity: 0 }} /* Adjusted animation for panel context */
             animate={{ y: 0, opacity: 1 }}
@@ -723,6 +717,13 @@ const App = () => {
           >
             <ChatbotPanel graphData={graphData} />
           </ChatbotArea>
+          {recommendationsData.length > 0 && (
+            <StatisticsPanel
+              title=" Recommendations"
+              type="recommendations"
+              data={recommendationsData}
+            />
+          )}
         </SidePanel>
 
         {/* Chatbot Area - Fixed positioning */}

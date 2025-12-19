@@ -16,7 +16,7 @@ const PanelContainer = styled(motion.div)`
 `;
 
 const PanelHeader = styled.div`
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid ${props => props.theme.colors.border};
   display: flex;
@@ -26,7 +26,7 @@ const PanelHeader = styled.div`
 
 const PanelTitle = styled.h3`
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: ${props => props.theme.colors.text};
 `;
@@ -46,32 +46,32 @@ const ToggleButton = styled(motion.button)`
 `;
 
 const PanelContent = styled.div`
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
 `;
 
 const StatCard = styled(motion.div)`
   background: linear-gradient(135deg, ${props => props.color}, ${props => props.colorSecondary});
   border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   color: white;
   margin-bottom: ${props => props.theme.spacing.sm};
   position: relative;
   overflow: hidden;
   
   .stat-value {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
     font-weight: 700;
     margin-bottom: ${props => props.theme.spacing.xs};
   }
   
   .stat-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     opacity: 0.9;
   }
 `;
 
 const ChartContainer = styled.div`
-  height: 200px;
+  height: 160px;
   margin: ${props => props.theme.spacing.sm} 0;
   
   .recharts-text {
@@ -84,14 +84,14 @@ const TrendingList = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${props => props.theme.spacing.xs};
-  max-height: 250px;
+  max-height: 200px;
   overflow-y: auto;
 `;
 
 const TrendingItem = styled(motion.div)`
   background: rgba(255, 255, 255, 0.05);
   border-radius: ${props => props.theme.borderRadius.sm};
-  padding: ${props => props.theme.spacing.sm};
+  padding: 4px 8px;
   border-left: 3px solid ${props => props.color};
   
   &:hover {
@@ -107,7 +107,7 @@ const TrendingItem = styled(motion.div)`
   
   .trending-title {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: ${props => props.theme.colors.text};
   }
   
@@ -116,12 +116,12 @@ const TrendingItem = styled(motion.div)`
     color: white;
     padding: 2px 6px;
     border-radius: 10px;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
   }
   
   .trending-meta {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: ${props => props.theme.colors.textSecondary};
   }
 `;
@@ -129,7 +129,7 @@ const TrendingItem = styled(motion.div)`
 const RecommendationCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.05);
   border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.sm};
+  padding: 6px;
   margin-bottom: ${props => props.theme.spacing.sm};
   border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
@@ -141,7 +141,7 @@ const RecommendationCard = styled(motion.div)`
   
   .recommendation-title {
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: ${props => props.theme.colors.text};
     margin-bottom: ${props => props.theme.spacing.xs};
     display: -webkit-box;
@@ -151,7 +151,7 @@ const RecommendationCard = styled(motion.div)`
   }
   
   .recommendation-summary {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: ${props => props.theme.colors.textSecondary};
     line-height: 1.3;
     margin-bottom: ${props => props.theme.spacing.xs};
@@ -166,7 +166,7 @@ const RecommendationCard = styled(motion.div)`
     gap: ${props => props.theme.spacing.xs};
     align-items: center;
     justify-content: space-between;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     
     .type-badge {
       background: ${props => props.theme.colors.primary};

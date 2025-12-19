@@ -15,7 +15,7 @@ const ChatContainer = styled.div`
 `;
 
 const ChatHeader = styled.div`
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid ${props => props.theme.colors.border};
   display: flex;
@@ -26,7 +26,7 @@ const ChatHeader = styled.div`
 
 const ChatTitle = styled.h3`
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   color: ${props => props.theme.colors.text};
   display: flex;
   align-items: center;
@@ -59,7 +59,7 @@ const ControlButton = styled(motion.button)`
   padding: ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.sm};
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: all ${props => props.theme.animations.fast};
   
   &:hover {
@@ -75,11 +75,12 @@ const ControlButton = styled(motion.button)`
 
 const MessagesContainer = styled.div`
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   display: flex;
   flex-direction: column;
-  gap: ${props => props.theme.spacing.md};
+  gap: ${props => props.theme.spacing.sm};
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -134,31 +135,32 @@ const Message = styled(motion.div)`
 `;
 
 const MessageBubble = styled.div`
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.md};
   max-width: 80%;
   word-wrap: break-word;
   line-height: 1.5;
   backdrop-filter: blur(10px);
+  font-size: 0.85rem;
   
   .message-meta {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     opacity: 0.7;
-    margin-top: ${props => props.theme.spacing.sm};
+    margin-top: 4px;
     display: flex;
     align-items: center;
-    gap: ${props => props.theme.spacing.sm};
+    gap: 4px;
   }
 `;
 
 const Avatar = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   flex-shrink: 0;
   
   &.user {
@@ -171,7 +173,7 @@ const Avatar = styled.div`
 `;
 
 const InputContainer = styled.div`
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   background: rgba(255, 255, 255, 0.05);
   border-top: 1px solid ${props => props.theme.colors.border};
   backdrop-filter: blur(10px);
@@ -188,13 +190,13 @@ const MessageInput = styled.textarea`
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   color: ${props => props.theme.colors.text};
   font-family: ${props => props.theme.fonts.primary};
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.4;
   resize: none;
-  min-height: 40px;
+  min-height: 32px;
   max-height: 120px;
   
   &::placeholder {
@@ -212,12 +214,12 @@ const SendButton = styled(motion.button)`
   background: linear-gradient(135deg, #667eea, #764ba2);
   border: none;
   color: white;
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.md};
   cursor: pointer;
-  font-size: 1.1rem;
-  width: 48px;
-  height: 48px;
+  font-size: 1rem;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -235,19 +237,19 @@ const SendButton = styled(motion.button)`
 
 const SuggestionsContainer = styled(motion.div)`
   display: flex;
-  gap: ${props => props.theme.spacing.sm};
+  gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: ${props => props.theme.spacing.sm};
+  margin-bottom: 4px;
 `;
 
 const SuggestionChip = styled(motion.button)`
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: ${props => props.theme.colors.text};
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
+  padding: 4px 8px;
   border-radius: ${props => props.theme.borderRadius.xl};
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   transition: all ${props => props.theme.animations.fast};
   
   &:hover {
@@ -259,8 +261,8 @@ const SuggestionChip = styled(motion.button)`
 const TypingIndicator = styled(motion.div)`
   display: flex;
   align-items: center;
-  gap: ${props => props.theme.spacing.sm};
-  padding: ${props => props.theme.spacing.md};
+  gap: 4px;
+  padding: ${props => props.theme.spacing.sm};
   color: ${props => props.theme.colors.textSecondary};
   font-style: italic;
   
@@ -287,27 +289,27 @@ const TypingIndicator = styled(motion.div)`
 `;
 
 const SourcesContainer = styled(motion.div)`
-  margin-top: ${props => props.theme.spacing.sm};
+  margin-top: 4px;
   
   .sources-header {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: ${props => props.theme.colors.textSecondary};
-    margin-bottom: ${props => props.theme.spacing.sm};
+    margin-bottom: 4px;
   }
   
   .sources-list {
     display: flex;
     flex-direction: column;
-    gap: ${props => props.theme.spacing.sm};
+    gap: 4px;
   }
 `;
 
 const SourceItem = styled.div`
   background: rgba(255, 255, 255, 0.05);
-  padding: ${props => props.theme.spacing.sm};
+  padding: 4px 8px;
   border-radius: ${props => props.theme.borderRadius.sm};
   border-left: 3px solid ${props => props.theme.colors.accent};
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   
   .source-title {
     font-weight: 600;
