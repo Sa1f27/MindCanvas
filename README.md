@@ -1,282 +1,453 @@
-# MindCanvas - AI Knowledge Graph
+# 🧠 MindCanvas - AI Knowledge Graph
 
-Transform your browsing data into an intelligent, queryable knowledge graph. MindCanvas uses AI to analyze your web content, extract relationships, and create an interactive knowledge graph you can explore and query.
+> Transform your browsing history into an intelligent, searchable knowledge graph with RAG-powered AI chat
+
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.9+-green?logo=python)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](https://react.dev/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 🎯 Problem Statement
 
 In our information-rich digital age, we consume vast amounts of content daily through browsing, reading articles, tutorials, and documentation. However, this knowledge remains scattered and disconnected, making it nearly impossible to:
-- Discover relationships between different topics you've learned
-- Recall and build upon previous knowledge effectively  
-- Identify knowledge gaps in your learning journey
-- Leverage AI to understand and connect your personal knowledge
 
-**MindCanvas solves this by transforming your data into an intelligent, searchable knowledge network powered by AI.**
+- 🔍 Discover relationships between different topics you've learned
+- 💡 Recall and build upon previous knowledge effectively
+- 📊 Identify knowledge gaps in your learning journey
+- 🤖 Leverage AI to understand and connect your personal knowledge
+
+**MindCanvas solves this by transforming your browsing data into an intelligent, searchable knowledge network powered by AI.**
 
 ## ✨ Features
 
-- **AI Content Analysis**: Extracts topics, summaries, and quality scores using GPT-4/Groq
-- **Knowledge Graph**: Interactive visualization with multiple layout algorithms
-- **Semantic Search**: Find content by meaning using vector embeddings
-- **RAG Chatbot**: Ask questions about your knowledge in natural language
-- **Chrome Extension**: One-click data export and processing
+### 🧠 AI-Powered Analysis
 
-## 📸 Preview
+- **Smart Content Extraction**: Automatic topic identification and summarization
+- **Quality Scoring**: AI-driven content quality assessment (1-10 scale)
+- **Semantic Understanding**: Deep content analysis beyond keywords
 
-![hp1](https://github.com/user-attachments/assets/74b813d9-681e-424d-b0c4-78eba019f4e8)
+### 🕸️ Knowledge Graph
 
-![hp2](https://github.com/user-attachments/assets/f00db503-d6ee-4828-8ce2-e7d42d707a69)
+- **Interactive Visualization**: Force-directed clustering with Cytoscape.js
+- **Multiple Layouts**: Force-directed, hierarchical, circular, and more
+- **Semantic Color Coding**: Visual categorization by content type and topics
 
-![hp3](https://github.com/user-attachments/assets/d93b3f21-30f6-4a8f-86ac-77fd38391946)
+### 🔍 Advanced Search
 
-![hp4](https://github.com/user-attachments/assets/22885336-8730-4cd3-aa86-1765be12320d)
+- **Vector Similarity**: Find content by meaning, not just keywords
+- **RAG Chatbot**: Natural language Q&A about your knowledge base
+- **Multi-Modal**: Text search, semantic search, and conversational queries
 
-![bg5](https://github.com/user-attachments/assets/91a6d30a-56a8-4b82-876e-ce0225dcc209)
+### 🔐 Privacy First
 
-## 🏗️ Architecture
+- **Local Processing**: All analysis happens on your machine
+- **No Data Sharing**: Your browsing data stays private
+- **Open Source**: Full transparency and customization
 
-### Backend Stack
-- **FastAPI**: High-performance Python web framework
-- **Supabase**: Vector database with pgvector for embeddings
-- **LangChain**: LLM orchestration and RAG implementation
-- **Multiple AI Providers**: OpenAI GPT-4, Groq Llama models
+## 📸 Screenshots
 
-### Frontend Stack
-- **React 18**: Modern component-based UI
-- **Cytoscape.js**: Advanced graph visualization
-- **Framer Motion**: Smooth animations and transitions
-- **Styled Components**: Dynamic theming and responsive design
+![Knowledge Graph](https://github.com/user-attachments/assets/74b813d9-681e-424d-b0c4-78eba019f4e8)
+_Interactive knowledge graph with semantic clustering_
 
-### Browser Extension
-- **Manifest V3**: Modern Chrome extension
-- **Privacy-First**: All data processing happens locally
-- **Batch Processing**: Efficient data export and processing
+![AI Chat](https://github.com/user-attachments/assets/f00db503-d6ee-4828-8ce2-e7d42d707a69)
+_RAG-powered chatbot with source citations_
 
-### Processing Pipeline
-```
-📄 Raw Content → 🧠 LLM Analysis → 📊 Quality Scoring → 🔗 Relationship Mapping
-```
+![Analytics](https://github.com/user-attachments/assets/d93b3f21-30f6-4a8f-86ac-77fd38391946)
+_Comprehensive knowledge analytics_
 
-## 📦 Requirements
+## 🚀 Quick Start (Docker - Recommended)
 
-- Python 3.8+
-- Node.js 16+
-- Chrome browser
-- OpenAI API key (required)
-- Groq API key (optional)
+### Prerequisites
 
-## 🚀 Installation (Windows)
+- Docker 20.10+
+- Docker Compose 2.0+
+- OpenAI API Key
+- Supabase Account
 
-### 1. Clone Repository
+### 1. Clone & Setup
 
-```cmd
-git clone https://github.com/yourusername/MindCanvas.git
-cd MindCanvas
+```bash
+git clone https://github.com/yourusername/mindcanvas.git
+cd mindcanvas
 ```
 
-### 2. Backend Setup
+### 2. Configure Environment
 
-```cmd
-cd backend
-pip install -r requirements.txt
-```
-
-Create `.env` file in `backend` folder or set in the System Env Vars:
+Create `backend/.env`:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
-GROQ_API_KEY=your_groq_api_key_here
+# Required
+OPENAI_API_KEY=sk-your-key-here
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+
+# Optional
+GROQ_API_KEY=gsk-your-key-here
+OPENAI_MODEL=gpt-4-turbo
 ```
 
-Start backend server:
+### 3. Run with Docker
 
-```cmd
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d --build
+```
+
+### 4. Access Application
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8090
+- **API Docs**: http://localhost:8090/docs
+
+📖 **Detailed Docker guide**: See [DOCKER_SETUP.md](DOCKER_SETUP.md)
+
+## 🛠️ Manual Installation (Alternative)
+
+<details>
+<summary>Click to expand manual setup instructions</summary>
+
+### Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate
+
+pip install -r requirements.txt
 python main.py
 ```
 
-Backend runs on `http://localhost:8090`
+### Frontend Setup
 
-### 3. Frontend Setup
-
-Open new terminal:
-
-```cmd
+```bash
 cd frontend
 npm install
 npm start
 ```
 
-Frontend runs on `http://localhost:3000`
+### Chrome Extension
 
-### 4. Chrome Extension
-
-1. Open Chrome → `chrome://extensions/`
-2. Enable "Developer mode" (top right)
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
 3. Click "Load unpacked"
-4. Select the `extension` folder from this project
-5. Pin the extension to toolbar
+4. Select `extension/` folder
 
-## 💡 Usage
+</details>
 
-### Export Your Data
+## 🏗️ Architecture
 
-1. Click the MindCanvas extension icon
-2. Click "Export Data (24h)"
-3. Wait for processing to complete
+```
+┌─────────────────────────────────────────┐
+│  Chrome Extension                       │
+│  • Exports browsing history             │
+│  • Privacy-first data collection        │
+└─────────────┬───────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  FastAPI Backend                        │
+│  • AI content analysis (GPT-4)          │
+│  • Vector embeddings (OpenAI)           │
+│  • RAG chatbot (LangChain)              │
+│  • DBSCAN clustering                    │
+└─────────────┬───────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  Supabase Database                      │
+│  • PostgreSQL + pgvector                │
+│  • Vector similarity search             │
+│  • RPC functions for performance        │
+└─────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────┐
+│  React Frontend                         │
+│  • Cytoscape.js graph visualization     │
+│  • Framer Motion animations             │
+│  • Real-time chat interface             │
+└─────────────────────────────────────────┘
+```
 
-### Explore Your Knowledge
+## 💡 Key Technologies
 
-1. Open `http://localhost:3000`
-2. View your knowledge graph
-3. Click nodes to see details
-4. Use search (Ctrl+K) to find content
-5. Chat with AI about your knowledge
+### Backend
 
-### Search & Discovery
+- **FastAPI** - High-performance Python web framework
+- **LangChain** - LLM orchestration and RAG implementation
+- **OpenAI GPT-4** - Content analysis and embeddings
+- **Supabase** - Vector database with pgvector
+- **Scikit-learn** - DBSCAN clustering algorithm
 
-- **Semantic Search**: "machine learning concepts"
-- **Text Search**: "React hooks"
-- **Chat Queries**: "What have I learned about Python?"
+### Frontend
+
+- **React 18** - Modern component-based UI
+- **Cytoscape.js** - Advanced graph visualization
+- **Framer Motion** - Smooth animations
+- **Styled Components** - Dynamic theming
+- **Zustand** - Lightweight state management
+
+### AI & ML
+
+- **GPT-4 Turbo** - Content understanding and chat
+- **text-embedding-ada-002** - Vector embeddings (1536-dim)
+- **DBSCAN** - Semantic clustering
+- **Cosine Similarity** - Content relationship detection
+
+## 📊 Data Flow
+
+```
+1. Browse Web → 2. Export History → 3. AI Analysis
+                                         ↓
+                                    Extract Topics
+                                    Score Quality
+                                    Generate Embeddings
+                                         ↓
+4. Store in Vector DB ← 5. Semantic Clustering
+         ↓
+6. Interactive Graph Visualization
+         ↓
+7. RAG Chatbot (Query your knowledge)
+```
 
 ## 🎯 Use Cases
 
-### For Students & Researchers
-- Track research across multiple domains
-- Discover connections between different papers/topics
-- Build comprehensive knowledge maps for thesis work
+### 👨‍🎓 Students & Researchers
 
-### For Developers & Engineers
+- Track research across multiple domains
+- Discover connections between papers/topics
+- Build comprehensive knowledge maps
+
+### 👨‍💻 Developers & Engineers
+
 - Connect technical concepts across frameworks
 - Build learning paths for new technologies
-- Maintain awareness of evolving best practices
+- Maintain awareness of best practices
 
-### For Content Creators & Writers
-- Organize research for articles and content
-- Find gaps in coverage for new content ideas
-- Track evolution of ideas and topics over time
+### ✍️ Content Creators
 
-### For Lifelong Learners
-- Visualize learning journey across disciplines
-- Identify knowledge gaps and learning opportunities
+- Organize research for articles
+- Find gaps in coverage
+- Track evolution of ideas
+
+### 📚 Lifelong Learners
+
+- Visualize learning journey
+- Identify knowledge gaps
 - Build personal expertise maps
 
-## 🔧 Advanced Features
+## 🔧 Configuration
 
-### RAG-Powered Chatbot
-```typescript
-// Natural language queries about your knowledge
-"What have I learned about React performance?"
-"Show me connections between AI and design"
-"What should I learn next in machine learning?"
+### API Keys Setup
+
+1. **OpenAI API Key** (Required)
+
+   - Get from: https://platform.openai.com/api-keys
+   - Used for: Content analysis and embeddings
+   - Cost: ~$0.001 per page analyzed
+
+2. **Groq API Key** (Optional)
+
+   - Get from: https://console.groq.com
+   - Used for: Faster inference (free tier available)
+   - Alternative to OpenAI for some tasks
+
+3. **Supabase** (Required)
+   - Sign up: https://supabase.com
+   - Create project → Get URL and anon key
+   - Run SQL from `backend/setup_production.py`
+
+### Supabase Database Setup
+
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Create main table
+CREATE TABLE processed_content (
+    id BIGSERIAL PRIMARY KEY,
+    url TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT,
+    embedding vector(1536),
+    -- ... other fields
+);
+
+-- Create vector search function
+CREATE OR REPLACE FUNCTION match_processed_content(
+    query_embedding vector(1536),
+    match_count int DEFAULT 10
+)
+RETURNS TABLE (...) AS $$
+    -- RPC function for fast similarity search
+$$ LANGUAGE plpgsql;
 ```
 
-### Export & Integration
-- **Multiple Formats**: JSON, CSV, graph formats
-- **API Access**: RESTful endpoints for external integrations
-- **Knowledge Graph Export**: Use your data in other tools
+Full SQL available in `backend/setup_production.py`
 
-### Privacy & Security
-- **Local Processing**: All analysis happens on your machine
-- **No Data Sharing**: Your browsing data stays private
-- **Open Source**: Full transparency and customization
+## 📚 API Reference
 
-## 🔗 API Endpoints
+### Core Endpoints
 
-- `POST /api/ingest` - Process browser data
-- `POST /api/chat` - Chat with knowledge base
-- `GET /api/content` - Get processed content
-- `POST /api/search/semantic` - Vector search
-- `GET /api/knowledge-graph/export` - Export graph data
+```typescript
+// Ingest browsing data
+POST /api/ingest
+Body: HistoryItem[]
 
-## ⚙️ Configuration
+// Chat with knowledge base
+POST /api/chat
+Body: {
+  message: string,
+  use_rag: boolean,
+  max_context_items: number
+}
 
-### API Keys Required
-- **OpenAI API Key**: For GPT-5 processing and embeddings
-- **Groq API Key**: For Llama model processing (optional)
-- **Supabase Credentials**: For vector database storage
+// Semantic search
+POST /api/search/semantic
+Body: {
+  query: string,
+  limit: number
+}
 
-### Customization Options
-- **Graph Layouts**: Force-directed, hierarchical, circular, grid
-- **Processing Models**: Choose between OpenAI, Groq, or hybrid
-- **Quality Thresholds**: Filter content by quality scores
-- **Refresh Intervals**: Automatic data synchronization settings
-
-## 🗄️ Database Setup (Optional)
-
-For production, set up Supabase:
-
-1. Create Supabase project
-2. Enable pgvector extension
-3. Run SQL from `backend/supabase_db.py`
-4. Update connection string in code
-
-Default: Uses file-based storage
-
-## 🛠️ Development
-
-### Add New Content Types
-
-1. Update content type detection in `backend/main.py`
-2. Add colors in `frontend/src/components/KnowledgeGraphViewer.js`
-3. Update clustering logic if needed
-
-### Customize AI Processing
-
-1. Modify prompts in `backend/main.py`
-2. Adjust quality scoring algorithm
-3. Add new LLM providers in processing pipeline
-
-### Extend Graph Features
-
-1. Add new layout algorithms in `frontend/src/components/ControlPanel.js`
-2. Implement custom node rendering
-3. Add new interaction modes
-
-## 🐛 Troubleshooting
-
-**Backend won't start:**
-- Check Python version: `python --version`
-- Install dependencies: `pip install -r requirements.txt`
-- Verify API keys in `.env` file
-
-**Frontend errors:**
-- Check Node version: `node --version`
-- Clear cache: `npm cache clean --force`
-- Reinstall: `rmdir /s node_modules && npm install`
-
-**Extension not working:**
-- Check extension is enabled in Chrome
-- Verify backend is running on port 8090
-- Check browser console for errors
-
-**No graph data:**
-- Export data using Chrome extension first
-- Check backend logs for processing errors
-- Verify API keys are working
-
-## 📊 Sample Output
-
-```json
-{
-  "knowledge_graph": {
-    "nodes": 1247,
-    "connections": 3891,
-    "topics_identified": 89,
-    "quality_average": 7.3
-  },
-  "insights": {
-    "top_interests": ["Machine Learning", "React Development", "System Design"],
-    "knowledge_gaps": ["Backend Architecture", "Database Design"],
-    "learning_velocity": "12 new concepts/week"
-  }
+// Export knowledge graph
+GET /api/knowledge-graph/export
+Response: {
+  nodes: Node[],
+  links: Link[],
+  metadata: {...}
 }
 ```
 
-## 🌟 Why MindCanvas?
+📖 **Full API docs**: http://localhost:8090/docs (when running)
 
-Transform passive browsing into active knowledge building. MindCanvas doesn't just store your data—it helps you understand it, connect it, and leverage it for continuous learning and discovery.
+## 🐛 Troubleshooting
 
-Built for the AI age: Designed from the ground up to leverage modern AI capabilities for knowledge work, making your personal information as powerful as your professional tools.
+### Backend Issues
+
+**"Cannot connect to Supabase"**
+
+```bash
+# Check environment variables
+docker-compose exec backend env | grep SUPABASE
+
+# Verify .env file exists
+ls -la backend/.env
+
+# Restart with fresh build
+docker-compose down && docker-compose up --build
+```
+
+**"Invalid OpenAI API key"**
+
+```bash
+# Test API key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+
+# Update .env with correct key
+```
+
+### Frontend Issues
+
+**"API connection failed"**
+
+```bash
+# Check backend is running
+curl http://localhost:8090/api/health
+
+# Check CORS configuration in backend/.env
+CORS_ORIGINS=http://localhost:3000
+```
+
+### Docker Issues
+
+**"Port already in use"**
+
+```bash
+# Find and kill process
+# Windows
+netstat -ano | findstr :8090
+
+# Mac/Linux
+lsof -i :8090
+
+# Or change port in docker-compose.yml
+```
+
+See [DOCKER_SETUP.md](DOCKER_SETUP.md) for comprehensive troubleshooting.
+
+## 🧪 Development
+
+### Running Tests
+
+```bash
+# Backend tests
+cd backend
+pytest tests/ -v
+
+# Frontend tests
+cd frontend
+npm test
+```
+
+### Hot Reload Development
+
+```bash
+# Mount code as volume in docker-compose.yml
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+```
+
+### Adding New Features
+
+1. **New Content Types**: Update `backend/main.py` → `extract_content()`
+2. **Graph Layouts**: Add to `frontend/src/components/ControlPanel.js`
+3. **AI Providers**: Extend `backend/main.py` → `LLMProcessor`
+
+## 📊 Performance
+
+- **Embedding Generation**: ~50ms per query (OpenAI)
+- **Vector Search**: ~100ms for 1000 documents
+- **Clustering**: ~2-3s for 500 documents
+- **Graph Rendering**: 60 FPS for 100 nodes
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open Pull Request
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+## 🙏 Acknowledgments
+
+- OpenAI for GPT and embeddings
+- Supabase for vector database
+- Cytoscape.js for graph visualization
+- React and FastAPI communities
+
+## 📧 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/mindcanvas/issues)
+- **Docs**: [Documentation](https://mindcanvas.readthedocs.io)
+- **Discord**: [Join Community](https://discord.gg/mindcanvas)
 
 ---
 
-*Ready to visualize your knowledge? Start building your personal knowledge graph today.*
+**Built with ❤️ for the AI age** | [⭐ Star on GitHub](https://github.com/yourusername/mindcanvas) | [📖 Read the Docs](https://mindcanvas.readthedocs.io)
