@@ -10,3 +10,5 @@ package-lock.json
 package.json
 .env
 node_modules/
+yarn.lock
+npm-debug.log
