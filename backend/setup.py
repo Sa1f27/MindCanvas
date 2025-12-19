@@ -5,10 +5,30 @@ Creates the basic table needed for vector storage
 
 from supabase import create_client
 import logging
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from backend directory
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 # Configuration
-SUPABASE_URL = "https://udodfabokrxcfnskailb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkb2RmYWJva3J4Y2Zuc2thaWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MjE0MzIsImV4cCI6MjA2NTM5NzQzMn0.EMOqo4_wxkdw7NHnZoXq2AEk5bGRiPsm8ZIj5gbL_io"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Clean up credentials (remove potential quotes or whitespace)
+if SUPABASE_URL:
+    SUPABASE_URL = SUPABASE_URL.strip().strip("'").strip('"')
+    # Remove trailing comments and slashes
+    if "#" in SUPABASE_URL:
+        SUPABASE_URL = SUPABASE_URL.split("#")[0].strip()
+    SUPABASE_URL = SUPABASE_URL.rstrip('/')
+
+if SUPABASE_KEY:
+    SUPABASE_KEY = SUPABASE_KEY.strip().strip("'").strip('"')
+    if "#" in SUPABASE_KEY:
+        SUPABASE_KEY = SUPABASE_KEY.split("#")[0].strip()
 
 def setup_database():
     """Create the main table if it doesn't exist"""
@@ -16,6 +36,10 @@ def setup_database():
     print("🧠 Setting up MindCanvas database...")
     
     try:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            print("❌ Error: SUPABASE_URL or SUPABASE_KEY not found in .env file")
+            return False
+            
         client = create_client(SUPABASE_URL, SUPABASE_KEY)
         
         # Create the main table

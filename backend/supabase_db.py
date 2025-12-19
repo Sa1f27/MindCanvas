@@ -18,12 +18,35 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import normalize
 
 from langchain_openai import OpenAIEmbeddings
-
+import os
+from pathlib import Path
 logger = logging.getLogger(__name__)
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+
+# Load .env from backend directory
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 # Configuration
-SUPABASE_URL = "https://bullbuypcoxanscxevrq.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bGxidXlwY294YW5zY3hldnJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3MDYxOTAsImV4cCI6MjA4MTI4MjE5MH0.APREjg7pPNHjQl_ZVXx_ZcH8qDbxs0fY2HMlihhC4bQ"
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Clean up credentials (remove potential quotes or whitespace)
+if SUPABASE_URL:
+    SUPABASE_URL = SUPABASE_URL.strip().strip("'").strip('"')
+    # Remove trailing comments and slashes
+    if "#" in SUPABASE_URL:
+        SUPABASE_URL = SUPABASE_URL.split("#")[0].strip()
+    SUPABASE_URL = SUPABASE_URL.rstrip('/')
+
+if SUPABASE_KEY:
+    SUPABASE_KEY = SUPABASE_KEY.strip().strip("'").strip('"')
+    if "#" in SUPABASE_KEY:
+        SUPABASE_KEY = SUPABASE_KEY.split("#")[0].strip()
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.warning("⚠️  Supabase credentials not found in .env file. Database features will fail.")
 
 @dataclass
 class ContentItem:

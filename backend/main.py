@@ -233,7 +233,7 @@ JSON only:"""
         if self.openai_client:
             try:
                 response = self.openai_client.chat.completions.create(
-                    model="gpt-4.1",
+                    model="gpt-5-nano-2025-08-07",
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=500,
                     temperature=0.1
