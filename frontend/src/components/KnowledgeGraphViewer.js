@@ -60,19 +60,25 @@ const LegendContainer = styled.div`
   right: 20px;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(15px);
-  padding: 16px;
+  padding: ${props => props.collapsed ? '12px' : '16px'};
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   font-size: 0.85rem;
-  max-width: 280px;
+  width: ${props => props.collapsed ? 'auto' : '240px'};
   z-index: 100;
+  cursor: ${props => props.collapsed ? 'pointer' : 'default'};
+  transition: all 0.3s ease;
   
   .legend-title {
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: ${props => props.collapsed ? '0' : '12px'};
     color: #667eea;
     font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
   }
   
   .legend-section {
@@ -210,6 +216,7 @@ const KnowledgeGraphViewer = ({
   const cyRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clusterInfo, setClusterInfo] = useState({});
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
 
   // Process graph data with enhanced clustering awareness
   const graphData = useMemo(() => {
@@ -491,7 +498,7 @@ const KnowledgeGraphViewer = ({
         cyRef.current = null;
       }
     };
-  }, [graphData.nodes.length, graphData.edges.length, layout]);
+  }, [graphData, layout, isLoading, onNodeSelect, onBackgroundClick]);
 
   // Empty state
   if (!data || !data.nodes || data.nodes.length === 0) {
@@ -534,43 +541,50 @@ const KnowledgeGraphViewer = ({
     <GraphContainer className={className} {...props}>
       <GraphCanvas ref={containerRef} />
       
-      <LegendContainer>
-        <div className="legend-title">🧠 Knowledge Clusters</div>
+      <LegendContainer collapsed={isLegendCollapsed}>
+        <div className="legend-title" onClick={() => setIsLegendCollapsed(!isLegendCollapsed)}>
+          <span>🧠 {isLegendCollapsed ? 'Legend' : 'Knowledge Clusters'}</span>
+          <span>{isLegendCollapsed ? '+' : '−'}</span>
+        </div>
         
-        <div className="legend-section">
-          <div className="section-title">Semantic Topics</div>
-          {clusterColors.map((cluster, idx) => (
-            <div key={idx} className="legend-item">
-              <div className="color-box" style={{ background: cluster.color }} />
-              <span>{cluster.name} ({cluster.count})</span>
+        {!isLegendCollapsed && (
+          <>
+            <div className="legend-section">
+              <div className="section-title">Semantic Topics</div>
+              {clusterColors.map((cluster, idx) => (
+                <div key={idx} className="legend-item">
+                  <div className="color-box" style={{ background: cluster.color }} />
+                  <span>{cluster.name} ({cluster.count})</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        
-        <div className="edge-legend">
-          <div className="section-title">Connection Strength</div>
-          <div className="edge-item">
-            <div className="edge-line" style={{ 
-              background: 'rgba(102, 126, 234, 0.8)',
-              height: '3px'
-            }} />
-            <span>Strong (Shared Topics)</span>
-          </div>
-          <div className="edge-item">
-            <div className="edge-line" style={{ 
-              background: 'rgba(255, 255, 255, 0.5)',
-              height: '2px'
-            }} />
-            <span>Medium (Semantic)</span>
-          </div>
-          <div className="edge-item">
-            <div className="edge-line" style={{ 
-              background: 'rgba(255, 255, 255, 0.2)',
-              height: '1px'
-            }} />
-            <span>Weak (Same Type)</span>
-          </div>
-        </div>
+            
+            <div className="edge-legend">
+              <div className="section-title">Connection Strength</div>
+              <div className="edge-item">
+                <div className="edge-line" style={{ 
+                  background: 'rgba(102, 126, 234, 0.8)',
+                  height: '3px'
+                }} />
+                <span>Strong (Shared Topics)</span>
+              </div>
+              <div className="edge-item">
+                <div className="edge-line" style={{ 
+                  background: 'rgba(255, 255, 255, 0.5)',
+                  height: '2px'
+                }} />
+                <span>Medium (Semantic)</span>
+              </div>
+              <div className="edge-item">
+                <div className="edge-line" style={{ 
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  height: '1px'
+                }} />
+                <span>Weak (Same Type)</span>
+              </div>
+            </div>
+          </>
+        )}
       </LegendContainer>
       
       <AnimatePresence>

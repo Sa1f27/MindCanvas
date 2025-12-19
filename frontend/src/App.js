@@ -1,5 +1,5 @@
 // src/App.js - Fixed layout with proper chatbot integration
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useKnowledgeStore } from './store/knowledgeStore';
@@ -105,14 +105,14 @@ const AppContainer = styled.div`
   display: grid;
   grid-template-areas:
     "left-panel main-graph right-panel";
-  grid-template-columns: 360px 1fr 360px; /* Increased side panel width */
+  grid-template-columns: 260px 1fr 300px; /* Reduced side panel width */
   grid-template-rows: 1fr;
-  gap: ${props => props.theme.spacing.md};
-  padding: ${props => props.theme.spacing.md};
+  gap: ${props => props.theme.spacing.sm};
+  padding: ${props => props.theme.spacing.sm};
   flex-grow: 1; /* Allows AppContainer to fill #root if #root is flex */
   
   @media (max-width: 1400px) {
-    grid-template-columns: 320px 1fr 320px; /* Adjusted for medium screens */
+    grid-template-columns: 240px 1fr 280px; /* Adjusted for medium screens */
   }
   
   @media (max-width: 1200px) {
@@ -132,8 +132,7 @@ const MainGraphArea = styled(motion.div)`
   border-radius: ${props => props.theme.borderRadius.lg};
   backdrop-filter: blur(20px);
   border: 1px solid ${props => props.theme.colors.border};
-  /* Changed overflow: hidden to auto to allow internal scrolling if graph is too large, or for zoom */
-  overflow: auto; 
+  overflow: hidden;
   box-shadow: ${props => props.theme.shadows.lg};
   position: relative;
   display: flex;
@@ -186,9 +185,10 @@ const ChatbotArea = styled(motion.div)`
   grid-area: chatbot;
   border-radius: ${props => props.theme.borderRadius.lg};
   overflow: hidden; /* Keep overflow hidden for the ChatbotPanel's internal scroll */
-  height: 550px; /* Increased height */
-  min-height: 550px; /* Increased min-height */
-  max-height: 550px;
+  flex: 1;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
   width: 100%;
 `;
 
@@ -356,41 +356,6 @@ const ErrorToast = styled(motion.div)`
   }
 `;
 
-const QuickActionsPanel = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${props => props.theme.spacing.sm};
-  
-  .action-button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: ${props => props.theme.colors.text};
-    padding: ${props => props.theme.spacing.md};
-    border-radius: ${props => props.theme.borderRadius.md};
-    cursor: pointer;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: ${props => props.theme.spacing.sm};
-    transition: all ${props => props.theme.animations.fast};
-    
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: translateY(-1px);
-    }
-    
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-    
-    .icon {
-      font-size: 1.1rem;
-    }
-  }
-`;
-
 const PanelHeaderTitle = styled(motion.div)`
   text-align: center;
   background: rgba(255, 255, 255, 0.1);
@@ -399,7 +364,7 @@ const PanelHeaderTitle = styled(motion.div)`
   padding: ${props => props.theme.spacing.lg};
   border: 1px solid ${props => props.theme.colors.border};
   margin-bottom: ${props => props.theme.spacing.md};
-  margin-top: ${props => props.theme.spacing.xxl}; /* Pushes the title down */
+  margin-top: 0;
   
   h1 {
     font-size: 1.8rem; /* Adjusted size for panel */
@@ -431,7 +396,6 @@ const App = () => {
     error,
     selectedNode,
     stats,
-    allContent,
     trending,
     recommendations,
     refreshAllData,
@@ -541,7 +505,7 @@ const App = () => {
   }, [error, clearError]);
 
   // Handle refresh
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     try {
       setLoading(true);
       await Promise.allSettled([
@@ -555,29 +519,29 @@ const App = () => {
     } catch (error) {
       console.error('🔄 Refresh failed:', error);
     }
-  };
+  }, [refreshAllData, loadStats, loadContent, loadTrending, loadRecommendations, setLoading]);
 
   // Handle node selection
-  const handleNodeSelect = (node) => {
+  const handleNodeSelect = useCallback((node) => {
     console.log('📌 Node selected:', node);
     setSelectedNode(node);
     setSelectedNodeDetails(node);
-  };
+  }, [setSelectedNode]);
 
   // Handle background click
-  const handleBackgroundClick = () => {
+  const handleBackgroundClick = useCallback(() => {
     setSelectedNode(null);
     setSelectedNodeDetails(null);
-  };
+  }, [setSelectedNode]);
 
   // Handle layout change
-  const handleLayoutChange = (layout) => {
+  const handleLayoutChange = useCallback((layout) => {
     console.log('🎯 Layout changed to:', layout);
     setCurrentLayout(layout);
-  };
+  }, []);
 
   // Handle search
-  const handleSearch = async (query) => {
+  const handleSearch = useCallback(async (query) => {
     try {
       console.log('🔍 Performing search:', query);
       await performSemanticSearch(query, 20);
@@ -585,7 +549,7 @@ const App = () => {
     } catch (error) {
       console.error('🔍 Search failed:', error);
     }
-  };
+  }, [performSemanticSearch]);
 
   // Handle export history (Chrome extension feature)
   const handleExportHistory = () => {
@@ -597,12 +561,6 @@ const App = () => {
       // Web context - show instruction
       alert('📱 To export your browsing history:\n\n1. Install the MindCanvas Chrome extension\n2. Click the extension icon\n3. Click "Export History"\n\nThe extension will send your data to this application.');
     }
-  };
-
-  // Handle dashboard open
-  const handleOpenDashboard = () => {
-    const dashboardUrl = 'http://localhost:8090/static/index.html';
-    window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Check if we have graph data
@@ -642,6 +600,15 @@ const App = () => {
           transition={{ duration: 0.5, delay: 0.1 }}
           style={{ gridArea: 'left-panel' }}
         >
+          <PanelHeaderTitle
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <h1>🧠 MindCanvas</h1>
+            <div className="subtitle">AI-Powered Knowledge Graph</div>
+          </PanelHeaderTitle>
+
           <StatisticsPanel
             title=" Overview"
             type="overview"
@@ -742,15 +709,6 @@ const App = () => {
           transition={{ duration: 0.5, delay: 0.3 }}
           style={{ gridArea: 'right-panel' }}
         >
-          {/* Moved Title Header to Right Panel */}
-          <PanelHeaderTitle
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
-          >
-            <h1>🧠 MindCanvas</h1>
-            <div className="subtitle">AI-Powered Knowledge Graph</div>
-          </PanelHeaderTitle>
           {recommendationsData.length > 0 && (
             <StatisticsPanel
               title=" Recommendations"
