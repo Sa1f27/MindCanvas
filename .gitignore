@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 backend/.env
 yui/
-frontend/node_modules/
 package-lock.json
 .DS_Store
 .vscode/

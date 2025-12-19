@@ -84,25 +84,18 @@ class SimpleVectorDB:
 
     async def generate_embedding(self, text: str, use_openai: bool = True) -> List[float]:
         """Generate vector embedding for text"""
-        target_dimension = 1536
+        # Default to 384 to match setup.py and SentenceTransformer
+        target_dimension = 384
         text_preview = text[:80] + "..." if len(text) > 80 else text
 
         try:
-            if use_openai and self.openai_embedder:
-                try:
-                    embedding = await asyncio.to_thread(
-                        self.openai_embedder.embed_query, text
-                    )
-                    if len(embedding) != target_dimension:
-                        logger.error(f"Dimension mismatch for '{text_preview}'")
-                        return [0.0] * target_dimension
-                    return embedding
-                except Exception as e:
-                    logger.warning(f"OpenAI embedding failed: {e}")
-                    return [0.0] * target_dimension
-            else:
-                logger.warning(f"OpenAI not available for '{text_preview}'")
-                return [0.0] * target_dimension
+            # Use SentenceTransformer (384 dims) to match database schema
+            if self.st_embedder:
+                embedding = await asyncio.to_thread(self.st_embedder.encode, text)
+                return embedding.tolist()
+            
+            logger.warning(f"No embedder available for '{text_preview}'")
+            return [0.0] * target_dimension
                 
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")

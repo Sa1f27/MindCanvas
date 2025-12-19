@@ -1,8 +1,7 @@
 // src/components/ChatbotPanel.js
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useKnowledgeStore } from '../store/knowledgeStore';
 
 const ChatContainer = styled.div`
   height: 100%;
@@ -359,6 +358,7 @@ const ChatbotPanel = ({ graphData }) => {
         const response = await fetch('http://localhost:8090/api/chat/suggestions?limit=5');
         const data = await response.json();
         setSuggestions(data.suggestions || []);
+        setIsOnline(true);
       } catch (error) {
         console.error('Failed to load suggestions:', error);
       }
@@ -426,6 +426,7 @@ const ChatbotPanel = ({ graphData }) => {
       }
       
       const chatResponse = await response.json();
+      setIsOnline(true);
       
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
@@ -618,15 +619,15 @@ const ChatbotPanel = ({ graphData }) => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isOnline ? "Ask me about your knowledge..." : "Chatbot offline - check backend connection"}
-            disabled={isLoading || !isOnline}
+            placeholder={isOnline ? "Ask me about your knowledge..." : "Type a message to try connecting..."}
+            disabled={isLoading}
             rows={1}
           />
           <SendButton
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => sendMessage(inputValue)}
-            disabled={isLoading || !inputValue.trim() || !isOnline}
+            disabled={isLoading || !inputValue.trim()}
           >
             {isLoading ? '⏳' : '🚀'}
           </SendButton>
