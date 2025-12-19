@@ -60,21 +60,21 @@ const LegendContainer = styled.div`
   right: 20px;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(15px);
-  padding: ${props => props.collapsed ? '12px' : '16px'};
+  padding: ${props => props.collapsed ? '8px' : '12px'};
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  font-size: 0.85rem;
-  width: ${props => props.collapsed ? 'auto' : '240px'};
+  font-size: 0.75rem;
+  width: ${props => props.collapsed ? 'auto' : '200px'};
   z-index: 100;
   cursor: ${props => props.collapsed ? 'pointer' : 'default'};
   transition: all 0.3s ease;
   
   .legend-title {
     font-weight: 600;
-    margin-bottom: ${props => props.collapsed ? '0' : '12px'};
+    margin-bottom: ${props => props.collapsed ? '0' : '8px'};
     color: #667eea;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -82,12 +82,12 @@ const LegendContainer = styled.div`
   }
   
   .legend-section {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     
     .section-title {
       font-weight: 500;
-      margin-bottom: 6px;
-      font-size: 0.8rem;
+      margin-bottom: 4px;
+      font-size: 0.7rem;
       color: rgba(255, 255, 255, 0.7);
     }
   }
@@ -95,32 +95,32 @@ const LegendContainer = styled.div`
   .legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 0.75rem;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 0.7rem;
     
     .color-box {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
       border: 1px solid rgba(255, 255, 255, 0.3);
     }
   }
   
   .edge-legend {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 8px;
-    margin-top: 8px;
+    padding-top: 6px;
+    margin-top: 6px;
     
     .edge-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-      font-size: 0.75rem;
+      gap: 6px;
+      margin-bottom: 3px;
+      font-size: 0.7rem;
       
       .edge-line {
-        width: 24px;
+        width: 20px;
         height: 2px;
         background: currentColor;
       }
@@ -216,7 +216,7 @@ const KnowledgeGraphViewer = ({
   const cyRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clusterInfo, setClusterInfo] = useState({});
-  const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
+  const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
 
   // Process graph data with enhanced clustering awareness
   const graphData = useMemo(() => {
@@ -306,10 +306,6 @@ const KnowledgeGraphViewer = ({
   // Initialize Cytoscape with enhanced layout
   useEffect(() => {
     if (!containerRef.current || graphData.nodes.length === 0) {
-      return;
-    }
-
-    if (isLoading) {
       return;
     }
 
@@ -498,7 +494,7 @@ const KnowledgeGraphViewer = ({
         cyRef.current = null;
       }
     };
-  }, [graphData, layout, isLoading, onNodeSelect, onBackgroundClick]);
+  }, [graphData, layout, onNodeSelect, onBackgroundClick]);
 
   // Empty state
   if (!data || !data.nodes || data.nodes.length === 0) {
