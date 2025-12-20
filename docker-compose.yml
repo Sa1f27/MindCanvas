@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mindcanvas-backend
+    ports:
+      - "8090:8090"
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Mount the backend code for hot-reloading during development
+      # For production, you might remove this to keep the image immutable
+      - ./backend:/app
+    networks:
+      - mindcanvas-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=/api
+    container_name: mindcanvas-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - mindcanvas-net
+
+networks:
+  mindcanvas-net:
+    driver: bridge
