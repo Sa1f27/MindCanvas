@@ -36,7 +36,7 @@ const MonitorHeader = styled.div`
   
   .title {
     font-weight: 600;
-    color: #4ecdc4;
+    color: #6366f1;
   }
 `;
 
@@ -65,7 +65,7 @@ const MetricRow = styled.div`
   
   .value {
     font-weight: 600;
-    color: #2ecc71;
+    color: #10b981;
   }
 `;
 

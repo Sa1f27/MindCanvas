@@ -94,8 +94,8 @@ const TabList = styled.div`
 `;
 
 const TabButton = styled(motion.button)`
-  background: ${props => props.active ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'transparent'};
-  border: 1px solid ${props => props.active ? '#667eea' : 'rgba(255, 255, 255, 0.2)'};
+  background: ${props => props.$active ? 'rgba(99, 102, 241, 0.18)' : 'transparent'};
+  border: 1px solid ${props => props.$active ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.08)'};
   color: ${props => props.theme.colors.text};
   padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
   border-radius: ${props => props.theme.borderRadius.md};
@@ -105,9 +105,9 @@ const TabButton = styled(motion.button)`
   display: flex;
   align-items: center;
   gap: ${props => props.theme.spacing.sm};
-  
+
   &:hover {
-    background: ${props => props.active ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255, 255, 255, 0.1)'};
+    background: ${props => props.$active ? 'rgba(99, 102, 241, 0.18)' : 'rgba(255, 255, 255, 0.06)'};
   }
   
   .icon {
@@ -161,20 +161,20 @@ const SettingControl = styled.div`
 const Toggle = styled(motion.div)`
   width: 50px;
   height: 26px;
-  background: ${props => props.active ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'rgba(255, 255, 255, 0.2)'};
+  background: ${props => props.$active ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255, 255, 255, 0.15)'};
   border-radius: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 2px;
   position: relative;
-  
+
   .toggle-thumb {
     width: 22px;
     height: 22px;
     background: white;
     border-radius: 50%;
-    transform: translateX(${props => props.active ? '24px' : '0px'});
+    transform: translateX(${props => props.$active ? '24px' : '0px'});
     transition: transform 0.2s ease;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
@@ -198,7 +198,7 @@ const Slider = styled.input`
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
@@ -207,7 +207,7 @@ const Slider = styled.input`
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     cursor: pointer;
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -242,7 +242,7 @@ const ColorOption = styled(motion.div)`
   border-radius: ${props => props.theme.borderRadius.md};
   background: ${props => props.color};
   cursor: pointer;
-  border: 3px solid ${props => props.active ? 'white' : 'transparent'};
+  border: 3px solid ${props => props.$active ? 'white' : 'transparent'};
   transition: all ${props => props.theme.animations.fast};
   
   &:hover {
@@ -257,10 +257,10 @@ const ButtonGroup = styled.div`
 `;
 
 const Button = styled(motion.button)`
-  background: ${props => props.variant === 'primary' 
-    ? 'linear-gradient(135deg, #667eea, #764ba2)' 
-    : 'rgba(255, 255, 255, 0.1)'};
-  border: 1px solid ${props => props.variant === 'primary' ? '#667eea' : 'rgba(255, 255, 255, 0.2)'};
+  background: ${props => props.variant === 'primary'
+    ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+    : 'rgba(255, 255, 255, 0.06)'};
+  border: 1px solid ${props => props.variant === 'primary' ? 'rgba(99, 102, 241, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
   color: ${props => props.theme.colors.text};
   padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
   border-radius: ${props => props.theme.borderRadius.md};
@@ -285,7 +285,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   const [settings, setSettings] = useState({
     appearance: {
       theme: 'dark',
-      primaryColor: '#667eea',
+      primaryColor: '#6366f1',
       animations: true,
       fontSize: 14,
       compactMode: false
@@ -330,8 +330,8 @@ const SettingsPanel = ({ isOpen, onClose }) => {
   ];
 
   const colorOptions = [
-    '#667eea', '#ff6b6b', '#4ecdc4', '#f39c12', '#9b59b6', 
-    '#e67e22', '#e74c3c', '#2ecc71', '#3498db', '#34495e'
+    '#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b',
+    '#f97316', '#ef4444', '#ec4899', '#3b82f6', '#64748b'
   ];
 
   useEffect(() => {
@@ -380,7 +380,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
       setSettings({
         appearance: {
           theme: 'dark',
-          primaryColor: '#667eea',
+          primaryColor: '#6366f1',
           animations: true,
           fontSize: 14,
           compactMode: false
@@ -436,7 +436,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                     <ColorOption
                       key={color}
                       color={color}
-                      active={settings.appearance.primaryColor === color}
+                      $active={settings.appearance.primaryColor === color}
                       onClick={() => updateSetting('appearance', 'primaryColor', color)}
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
@@ -468,7 +468,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Animations
                   <Toggle
-                    active={settings.appearance.animations}
+                    $active={settings.appearance.animations}
                     onClick={() => updateSetting('appearance', 'animations', !settings.appearance.animations)}
                   >
                     <div className="toggle-thumb" />
@@ -483,7 +483,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Compact Mode
                   <Toggle
-                    active={settings.appearance.compactMode}
+                    $active={settings.appearance.compactMode}
                     onClick={() => updateSetting('appearance', 'compactMode', !settings.appearance.compactMode)}
                   >
                     <div className="toggle-thumb" />
@@ -526,7 +526,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Show Node Labels
                   <Toggle
-                    active={settings.graph.showLabels}
+                    $active={settings.graph.showLabels}
                     onClick={() => updateSetting('graph', 'showLabels', !settings.graph.showLabels)}
                   >
                     <div className="toggle-thumb" />
@@ -541,7 +541,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Enable Clustering
                   <Toggle
-                    active={settings.graph.clustering}
+                    $active={settings.graph.clustering}
                     onClick={() => updateSetting('graph', 'clustering', !settings.graph.clustering)}
                   >
                     <div className="toggle-thumb" />
@@ -556,7 +556,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Physics Simulation
                   <Toggle
-                    active={settings.graph.physics}
+                    $active={settings.graph.physics}
                     onClick={() => updateSetting('graph', 'physics', !settings.graph.physics)}
                   >
                     <div className="toggle-thumb" />
@@ -614,7 +614,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Auto-Complete
                   <Toggle
-                    active={settings.search.autoComplete}
+                    $active={settings.search.autoComplete}
                     onClick={() => updateSetting('search', 'autoComplete', !settings.search.autoComplete)}
                   >
                     <div className="toggle-thumb" />
@@ -629,7 +629,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Search History
                   <Toggle
-                    active={settings.search.searchHistory}
+                    $active={settings.search.searchHistory}
                     onClick={() => updateSetting('search', 'searchHistory', !settings.search.searchHistory)}
                   >
                     <div className="toggle-thumb" />
@@ -672,7 +672,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Usage Analytics
                   <Toggle
-                    active={settings.privacy.analytics}
+                    $active={settings.privacy.analytics}
                     onClick={() => updateSetting('privacy', 'analytics', !settings.privacy.analytics)}
                   >
                     <div className="toggle-thumb" />
@@ -687,7 +687,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Error Reporting
                   <Toggle
-                    active={settings.privacy.errorReporting}
+                    $active={settings.privacy.errorReporting}
                     onClick={() => updateSetting('privacy', 'errorReporting', !settings.privacy.errorReporting)}
                   >
                     <div className="toggle-thumb" />
@@ -730,7 +730,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Debug Mode
                   <Toggle
-                    active={settings.advanced.debugMode}
+                    $active={settings.advanced.debugMode}
                     onClick={() => updateSetting('advanced', 'debugMode', !settings.advanced.debugMode)}
                   >
                     <div className="toggle-thumb" />
@@ -745,7 +745,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                 <SettingLabel>
                   Experimental Features
                   <Toggle
-                    active={settings.advanced.experimentalFeatures}
+                    $active={settings.advanced.experimentalFeatures}
                     onClick={() => updateSetting('advanced', 'experimentalFeatures', !settings.advanced.experimentalFeatures)}
                   >
                     <div className="toggle-thumb" />
@@ -824,7 +824,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
             {tabs.map(tab => (
               <TabButton
                 key={tab.id}
-                active={activeTab === tab.id}
+                $active={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}

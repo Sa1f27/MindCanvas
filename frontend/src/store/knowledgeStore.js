@@ -1,7 +1,7 @@
 // src/store/knowledgeStore.js - Simplified with backend-controlled filters
 import { create } from 'zustand';
 
-const API_BASE = 'http://localhost:8090/api';
+const API_BASE = '/api';
 
 // Enhanced API helper with better error handling and retry logic
 const apiCall = async (endpoint, options = {}) => {

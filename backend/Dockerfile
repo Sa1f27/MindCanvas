@@ -1,24 +1,25 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.11-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Add the app directory to the PYTHONPATH
-ENV PYTHONPATH "${PYTHONPATH}:/app"
+ENV PYTHONPATH="${PYTHONPATH}:/app"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV SENTENCE_TRANSFORMERS_HOME=/app/.st_cache
 
-# Copy the requirements file into the container at /app
+# Upgrade pip first to avoid JSON index parse bugs
+RUN pip install --upgrade pip
+
+# Install CPU-only torch first (~200MB vs ~2GB CUDA build)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining deps (cached layer)
 COPY ./requirements.txt /app/
-
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire backend directory into the container at /app
+# Copy source code
 COPY . /app/
 
-# Expose the port the app runs on
 EXPOSE 8090
 
-# Define the command to run the application
-# The README indicates running `python main.py` directly
-CMD ["python", "main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8090"]

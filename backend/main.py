@@ -426,10 +426,15 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     global db, rag_chatbot
-    
+
     # Initialize database with OpenAI API key for embeddings
-    db = await init_db(OPENAI_API_KEY)
-    
+    try:
+        db = await init_db(OPENAI_API_KEY)
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        logger.warning("⚠️ Running without database — set SUPABASE_URL and SUPABASE_KEY in .env")
+        db = None
+
     # Initialize RAG chatbot with better error handling
     try:
         rag_chatbot = RAGChatbot(db, OPENAI_API_KEY, GROQ_API_KEY)
@@ -437,7 +442,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ RAG Chatbot initialization failed: {e}")
         rag_chatbot = None
-    
+
     logger.info("✅ MindCanvas started")
     yield
     # Shutdown (if needed)
@@ -786,9 +791,261 @@ async def get_recommendations(limit: int = 10):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+async def _ai_clustering(items: list) -> dict:
+    """
+    AI-based clustering using GPT-4.1-mini with JSON mode.
+    Sends all node titles/topics to the model and gets back semantically
+    meaningful cluster assignments.
+    Returns dict: str(id) -> (cluster_name, cluster_int_id)
+    """
+    if not OPENAI_API_KEY:
+        logger.warning("No OpenAI API key — cannot use AI clustering")
+        return {}
+
+    # Build a compact description of each node for the prompt
+    node_descriptions = []
+    for item in items:
+        topics = item.get('key_topics') or []
+        node_descriptions.append({
+            "id": str(item['id']),
+            "title": item.get('title', ''),
+            "topics": topics[:5],
+            "type": item.get('content_type', ''),
+        })
+
+    prompt = f"""You are a knowledge graph clustering expert. Given the following list of content nodes (each with an id, title, topics, and type), group them into meaningful semantic clusters.
+
+Rules:
+- Create between 3 and 15 clusters depending on how many distinct themes exist.
+- Each cluster name should be a short, descriptive label (2-4 words max), like "Python Programming", "Machine Learning", "Web Development", "SAP Administration", etc.
+- Every node MUST be assigned to exactly one cluster.
+- Group nodes by their actual semantic meaning — nodes about similar subjects go together.
+- Do NOT create generic clusters like "General" or "Miscellaneous" unless absolutely necessary.
+
+Nodes:
+{json.dumps(node_descriptions, indent=2)}
+
+Respond with a JSON object in this exact format:
+{{
+  "clusters": [
+    {{
+      "name": "Cluster Name",
+      "node_ids": ["1", "5", "12"]
+    }}
+  ]
+}}"""
+
+    try:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=2000,
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        clusters_list = result.get("clusters", [])
+
+        if not clusters_list:
+            logger.warning("AI clustering returned empty clusters")
+            return {}
+
+        id_to_cluster = {}
+        for idx, cluster in enumerate(clusters_list, 1):
+            name = cluster.get("name", f"Cluster {idx}")
+            for node_id in cluster.get("node_ids", []):
+                id_to_cluster[str(node_id)] = (name, idx)
+
+        logger.info(f"✅ AI clustering (GPT-4.1-mini): {len(clusters_list)} clusters, {len(id_to_cluster)} nodes assigned")
+        return id_to_cluster
+
+    except Exception as e:
+        logger.error(f"AI clustering failed: {e}")
+        return {}
+
+
+def _normalize_topic(topic: str, all_topics_lower: list, first_word_counts: Counter) -> str:
+    """
+    Normalize a topic to its canonical base form.
+    Strategy 1: Find the shortest topic that is a word-boundary prefix.
+      "Python Programming" → "python" (if "python" exists in topics list)
+    Strategy 2: If no prefix match, and the first word appears in 2+ topics,
+      normalize to the first word alone (handles "SAP Basis"/"SAP Skills" → "sap").
+    """
+    t_lower = topic.lower().strip()
+    # Strategy 1: prefix match with an existing shorter topic
+    for candidate in sorted(all_topics_lower, key=len):
+        if candidate == t_lower:
+            continue
+        if t_lower.startswith(candidate):
+            rest = t_lower[len(candidate):]
+            if rest and rest[0] in (' ', '-', '_', '/'):
+                return candidate
+    # Strategy 2: first-word collapse (e.g. "sap basis", "sap skills" → "sap")
+    words = t_lower.split()
+    if words and first_word_counts[words[0]] >= 2 and len(words) > 1:
+        return words[0]
+    return t_lower
+
+
+def _topic_specificity_clustering(items: list) -> dict:
+    """
+    Smart topic-based clustering when embeddings are unavailable.
+    Step 1: Normalize topics to canonical forms so "Python Programming" and
+            "Python Data Types" both map to "Python".
+    Step 2: Use frequency analysis — topics appearing in ≥2 nodes form cluster seeds.
+    Step 3: Assign each node to its most specific (least globally common) seed topic.
+    Returns dict: str(id) -> (cluster_name, cluster_int_id)
+    """
+    n = len(items)
+    if n == 0:
+        return {}
+
+    # Collect all unique topics (lowercase)
+    all_raw_topics = []
+    for item in items:
+        for t in (item.get('key_topics') or []):
+            if t:
+                all_raw_topics.append(t.strip())
+    all_topics_lower = sorted(set(t.lower() for t in all_raw_topics), key=len)
+
+    # Count how many topics share each first word (for Strategy 2 normalization)
+    first_word_counts: Counter = Counter()
+    for t in all_topics_lower:
+        words = t.split()
+        if words:
+            first_word_counts[words[0]] += 1
+
+    # Build normalization map: original_lower → canonical_lower
+    norm_map = {}
+    for t in all_raw_topics:
+        t_lower = t.lower().strip()
+        if t_lower not in norm_map:
+            norm_map[t_lower] = _normalize_topic(t, all_topics_lower, first_word_counts)
+
+    # Build a display name map: canonical_lower → best display name (title-cased original)
+    display_name = {}
+    for t in sorted(all_raw_topics, key=len):  # prefer shorter originals for display
+        canonical = norm_map[t.lower().strip()]
+        if canonical not in display_name:
+            display_name[canonical] = t.title()
+
+    # Count frequency using CANONICAL topics
+    topic_counts = Counter()
+    for item in items:
+        seen = set()
+        for t in (item.get('key_topics') or []):
+            canonical = norm_map.get(t.lower().strip(), t.lower().strip())
+            if canonical not in seen:
+                topic_counts[canonical] += 1
+                seen.add(canonical)
+
+    # Topics that form meaningful groups: appear in ≥2 nodes but <70% of nodes
+    min_support = 2
+    max_support = max(2, int(n * 0.70))
+    group_topics = {t for t, c in topic_counts.items() if min_support <= c <= max_support}
+
+    # Assign each node to its most SPECIFIC group topic (least globally common)
+    id_to_cluster = {}
+    for item in items:
+        sid = str(item['id'])
+        node_canonicals = []
+        seen = set()
+        for t in (item.get('key_topics') or []):
+            canonical = norm_map.get(t.lower().strip(), t.lower().strip())
+            if canonical in group_topics and canonical not in seen:
+                node_canonicals.append(canonical)
+                seen.add(canonical)
+
+        if node_canonicals:
+            # Most representative = highest global frequency among node's group-forming topics
+            # This keeps Python nodes in "Python" rather than drifting to generic "Software Development"
+            best = max(node_canonicals, key=lambda t: (topic_counts[t], t))
+            id_to_cluster[sid] = best
+        else:
+            # No group-forming topic: use first canonical topic or content_type
+            raw = item.get('key_topics') or []
+            if raw:
+                id_to_cluster[sid] = norm_map.get(raw[0].lower().strip(), raw[0].lower().strip())
+            else:
+                id_to_cluster[sid] = item.get('content_type', 'General').lower()
+
+    # Merge singleton clusters into best alternative group topic
+    cluster_sizes = Counter(id_to_cluster.values())
+    singletons = {c for c, sz in cluster_sizes.items() if sz == 1}
+    if singletons:
+        for item in items:
+            sid = str(item['id'])
+            if id_to_cluster.get(sid) in singletons:
+                node_canonicals = []
+                seen = set()
+                for t in (item.get('key_topics') or []):
+                    canonical = norm_map.get(t.lower().strip(), t.lower().strip())
+                    if canonical in group_topics and canonical not in seen:
+                        node_canonicals.append(canonical)
+                        seen.add(canonical)
+                # Merge singleton into the most representative alternative group topic
+                alternatives = [t for t in node_canonicals if t != id_to_cluster[sid]]
+                if alternatives:
+                    id_to_cluster[sid] = max(alternatives, key=lambda t: (topic_counts[t], t))
+
+    # Assign integer IDs to canonical cluster names
+    unique_clusters = sorted(set(id_to_cluster.values()))
+    cluster_name_to_id = {name: i + 1 for i, name in enumerate(unique_clusters)}
+
+    return {
+        sid: (display_name.get(name, name.title()), cluster_name_to_id[name])
+        for sid, name in id_to_cluster.items()
+    }
+
+
+@app.get("/api/reindex")
+async def reindex_embeddings():
+    """Backfill embeddings for all existing nodes that have none (needed for DBSCAN clustering)"""
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        # Fetch nodes without embeddings
+        response = await asyncio.to_thread(
+            db.client.table('processed_content').select(
+                'id, title, summary'
+            ).execute
+        )
+        if not response.data:
+            return {"reindexed": 0, "message": "No content found"}
+
+        updated = 0
+        failed = 0
+        for item in response.data:
+            try:
+                text = f"{item.get('title', '')} {item.get('summary', '')}"
+                embedding = await db.generate_embedding(text, use_openai=bool(OPENAI_API_KEY))
+                if embedding:
+                    await asyncio.to_thread(
+                        db.client.table('processed_content')
+                        .update({'embedding': embedding})
+                        .eq('id', item['id'])
+                        .execute
+                    )
+                    updated += 1
+            except Exception as e:
+                logger.warning(f"Failed to embed node {item['id']}: {e}")
+                failed += 1
+
+        logger.info(f"✅ Reindexed {updated} nodes, {failed} failed")
+        return {"reindexed": updated, "failed": failed,
+                "message": f"Embeddings generated for {updated} nodes. Refresh the graph to see improved clustering."}
+    except Exception as e:
+        logger.error(f"Reindex failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/knowledge-graph/export")
 async def export_knowledge_graph():
-    """Export knowledge graph with proper nodes and links format"""
+    """Export knowledge graph with AI-based semantic clustering (DBSCAN on embeddings, topic fallback)"""
     try:
         # Get all content from database
         response = await asyncio.to_thread(
@@ -796,7 +1053,7 @@ async def export_knowledge_graph():
                 'id, url, title, summary, content_type, key_topics, quality_score, processing_method, visit_timestamp'
             ).execute
         )
-        
+
         if not response.data or len(response.data) == 0:
             return {
                 "nodes": [],
@@ -807,12 +1064,54 @@ async def export_knowledge_graph():
                     "exported_at": datetime.now().isoformat()
                 }
             }
-        
-        # Process nodes
+
+        items = response.data
+
+        # ── 1. Try AI-based clustering (GPT-4.1-mini) ────────────────────────────
+        id_to_cluster = {}    # str(id) → cluster_name
+        id_to_cluster_id = {} # str(id) → int
+        used_method = "topic_specificity"
+
+        try:
+            ai_result = await _ai_clustering(items)
+            if ai_result and len(ai_result) >= len(items) * 0.5:
+                # AI clustering succeeded and assigned at least half the nodes
+                for sid, (cname, cid) in ai_result.items():
+                    id_to_cluster[sid] = cname
+                    id_to_cluster_id[sid] = cid
+                used_method = "ai_gpt4.1-mini"
+                logger.info(f"✅ AI clustering: {len(set(id_to_cluster.values()))} clusters")
+        except Exception as e:
+            logger.warning(f"AI clustering failed: {e}")
+
+        # ── 2. Fallback to topic-specificity clustering ───────────────────────────
+        if used_method == "topic_specificity":
+            topic_result = _topic_specificity_clustering(items)
+            for sid, (cname, cid) in topic_result.items():
+                id_to_cluster[sid] = cname
+                id_to_cluster_id[sid] = cid
+            logger.info(f"✅ Topic clustering fallback: {len(set(id_to_cluster.values()))} semantic clusters")
+
+        # Fill any nodes not assigned by AI (if AI skipped some)
+        if used_method.startswith("ai_"):
+            unassigned = [item for item in items if str(item['id']) not in id_to_cluster]
+            if unassigned:
+                fallback = _topic_specificity_clustering(unassigned)
+                max_id = max(id_to_cluster_id.values()) if id_to_cluster_id else 0
+                for sid, (cname, cid) in fallback.items():
+                    id_to_cluster[sid] = cname
+                    id_to_cluster_id[sid] = cid + max_id
+
+        # ── 3. Build nodes with cluster labels ──────────────────────────────────
         nodes = []
-        for item in response.data:
+        for item in items:
+            sid = str(item['id'])
+            topics = item.get('key_topics') or []
+            cluster_name = id_to_cluster.get(sid) or (topics[0].title() if topics else 'General')
+            cluster_id = id_to_cluster_id.get(sid, 0)
+
             node = {
-                "id": str(item['id']),
+                "id": sid,
                 "name": item.get('title', f"Content {item['id']}"),
                 "title": item.get('title', f"Content {item['id']}"),
                 "type": item.get('content_type', 'Unknown'),
@@ -821,11 +1120,14 @@ async def export_knowledge_graph():
                 "quality_score": item.get('quality_score', 5),
                 "summary": item.get('summary', ''),
                 "description": item.get('summary', ''),
-                "topics": item.get('key_topics', []),
-                "key_topics": item.get('key_topics', []),
+                "topics": topics,
+                "key_topics": topics,
                 "url": item.get('url', ''),
                 "processing_method": item.get('processing_method', 'unknown'),
-                "visit_timestamp": item.get('visit_timestamp')
+                "visit_timestamp": item.get('visit_timestamp'),
+                "cluster": cluster_name,
+                "cluster_id": cluster_id,
+                "cluster_method": used_method,
             }
             nodes.append(node)
         
@@ -988,4 +1290,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     # Use different port if 8000 is blocked
-    uvicorn.run("main:app", host="127.0.0.1", port=8090, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8090, reload=False)

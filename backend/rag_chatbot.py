@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
 MAX_CONTEXT_ITEMS = 10
 MIN_SIMILARITY_THRESHOLD = 0.1
 MAX_CONVERSATION_HISTORY = 20
-VALID_OPENAI_MODELS = ["gpt-5-nano-2025-08-07", "gpt-oss-20b", "gpt-5-mini-2025-08-07"]
+VALID_OPENAI_MODELS = [
+    "gpt-5.1-mini", "gpt-4.1-mini", "gpt-4.1-nano",
+    "gpt-5.1-nano"
+]
 
 # -----------------------------
 # Pydantic Models with Validation
@@ -160,10 +163,10 @@ class RAGChatbot:
         self.openai_api_key = openai_key
         
         # Get model from environment with validation
-        model_name = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
+        model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         if model_name not in VALID_OPENAI_MODELS:
-            logger.warning(f"Invalid model {model_name}, defaulting to gpt-4-turbo")
-            model_name = "gpt-4-turbo"
+            logger.warning(f"Model '{model_name}' not in validated list, using gpt-4o-mini")
+            model_name = "gpt-4o-mini"
         
         try:
             self.llm = ChatOpenAI(
@@ -189,14 +192,15 @@ Guidelines:
 3. Be conversational and helpful.
 4. Suggest adding related content to their knowledge base for better answers in the future."""
 
-        self.rag_system_prompt = """You are MindCanvas AI, an intelligent assistant answering questions based *only* on the user's personal knowledge base.
+        self.rag_system_prompt = """You are MindCanvas AI, an intelligent assistant that helps users explore and understand their personal knowledge base.
 
-CRITICAL RULES:
-1. **Strictly Adhere to Context**: Your response MUST be based *exclusively* on the 'Context' section provided.
-2. **Cite Everything**: For every piece of information, cite the source as [Source: Title]. For multiple sources, cite all.
-3. **Handle Missing Information**: If the context doesn't contain the answer, state that the information is not available in their knowledge base.
-4. **Be a Synthesizer**: Connect ideas, summarize findings, and provide insights based *only* on the given context.
-5. **Be Conversational**: Maintain a helpful tone while being accurate and citing sources.
+GUIDELINES:
+1. **Primary Source**: Prefer information from the 'Context' section when it is relevant and helpful.
+2. **Cite Sources**: When drawing from the context, cite sources as [Source: Title].
+3. **Supplement with Knowledge**: If the context is partial or missing details, you may supplement with your general knowledge — but clearly distinguish what comes from the user's saved content vs. your own knowledge.
+4. **Be a Synthesizer**: Connect ideas across sources, summarize findings, and provide actionable insights.
+5. **Be Honest**: If nothing relevant is in the context, say so, but still try to answer helpfully using your general knowledge.
+6. **Be Conversational**: Maintain a helpful, concise, and engaging tone.
 
 The context from their knowledge base follows:"""
 

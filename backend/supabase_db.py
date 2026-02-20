@@ -63,9 +63,11 @@ class ContentItem:
     embedding: Optional[List[float]] = None
 
 class SimpleVectorDB:
-    def __init__(self, openai_api_key=None):
+    def __init__(self, openai_api_key=None, st_embedder=None):
         self.client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        self.st_embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        # st_embedder must be pre-loaded in a thread (via init_db) to avoid
+        # blocking the async event loop during startup — which closes the httpx client.
+        self.st_embedder = st_embedder
         self.openai_embedder = OpenAIEmbeddings(openai_api_key=openai_api_key) if openai_api_key else None
         logger.info("✅ Connected to Supabase with enhanced clustering")
         
@@ -74,8 +76,8 @@ class SimpleVectorDB:
         try:
             await asyncio.to_thread(
                 self.client.rpc(
-                    'match_processed_content', 
-                    {'query_embedding': [0.0] * 1536, 'match_count': 1}
+                    'match_processed_content',
+                    {'query_embedding': [0.0] * 384, 'match_count': 1}
                 ).execute
             )
             logger.info("✅ Vector search function verified")
@@ -130,9 +132,11 @@ class SimpleVectorDB:
         try:
             query_embedding = await self.generate_embedding(query, use_openai=bool(self.openai_embedder))
             
-            if not query_embedding or len(query_embedding) != 1536:
+            if not query_embedding or len(query_embedding) == 0:
                 logger.error(f"Invalid query embedding for '{query_preview}'")
                 return []
+
+            embedding_dim = len(query_embedding)
 
             try:
                 response = await asyncio.to_thread(
@@ -178,7 +182,7 @@ class SimpleVectorDB:
             results = []
             for item in response.data:
                 item_embedding = item.get('embedding')
-                if not item_embedding or len(item_embedding) != 1536:
+                if not item_embedding or len(item_embedding) != embedding_dim:
                     continue
                 
                 similarity = self._cosine_similarity(query_embedding, item_embedding)
@@ -227,11 +231,15 @@ class SimpleVectorDB:
             embeddings = []
             valid_items = []
             
+            target_dim = None
             for item in items:
                 emb = item.get('embedding')
-                if emb and len(emb) == 1536:
-                    embeddings.append(emb)
-                    valid_items.append(item)
+                if emb and len(emb) > 0:
+                    if target_dim is None:
+                        target_dim = len(emb)
+                    if len(emb) == target_dim:
+                        embeddings.append(emb)
+                        valid_items.append(item)
             
             if len(embeddings) < 3:
                 logger.warning("Not enough valid embeddings for clustering")
@@ -241,10 +249,13 @@ class SimpleVectorDB:
             embeddings_array = np.array(embeddings)
             embeddings_normalized = normalize(embeddings_array)
             
-            # DBSCAN clustering with optimized parameters
-            eps = 0.3  # Maximum distance between samples
-            min_samples = max(2, len(valid_items) // 10)  # Adaptive minimum cluster size
-            
+            # DBSCAN clustering with well-tuned parameters
+            # eps controls neighbourhood size: 0.4 = moderate similarity required
+            # min_samples: adaptive but kept small so smaller collections still cluster
+            n = len(valid_items)
+            eps = 0.4
+            min_samples = max(2, min(4, n // 8))
+
             clustering = DBSCAN(eps=eps, min_samples=min_samples, metric='cosine', n_jobs=-1)
             labels = clustering.fit_predict(embeddings_normalized)
             
@@ -275,9 +286,11 @@ class SimpleVectorDB:
                 # Calculate cluster quality
                 avg_quality = sum(item.get('quality_score', 5) for item in cluster_items) / len(cluster_items)
                 
-                # Determine cluster name from dominant topics
-                if top_topics:
-                    cluster_name = f"{top_topics[0]} Cluster"
+                # Determine cluster name from top 1-2 dominant topics
+                if len(top_topics) >= 2:
+                    cluster_name = f"{top_topics[0].title()} & {top_topics[1].title()}"
+                elif top_topics:
+                    cluster_name = top_topics[0].title()
                 else:
                     cluster_name = f"Cluster {cluster_id + 1}"
                 
@@ -514,7 +527,7 @@ class SimpleVectorDB:
                 nodes.append(node)
                 
                 # Store embedding for similarity calculation
-                if item.get('embedding') and len(item.get('embedding', [])) == 1536:
+                if item.get('embedding') and len(item.get('embedding', [])) > 0:
                     embeddings_map[str(item['id'])] = item['embedding']
             
             # Create enhanced edges with multiple strategies
@@ -530,8 +543,8 @@ class SimpleVectorDB:
                     id2 = node2['id']
                     shared_topics = topics1.intersection(topics2)
                     
-                    # Strategy 1: Strong edges for shared topics
-                    if len(shared_topics) >= 2:
+                    # Strategy 1: Strong edges for shared topics (at least 1 shared topic)
+                    if len(shared_topics) >= 1:
                         similarity = len(shared_topics) / max(len(topics1), len(topics2), 1)
                         edges.append({
                             "id": f"edge_{edge_id}",
@@ -551,7 +564,7 @@ class SimpleVectorDB:
                             embeddings_map[id2]
                         )
                         
-                        if emb_similarity > 0.7:  # High semantic similarity
+                        if emb_similarity > 0.5:  # Medium-high semantic similarity
                             edges.append({
                                 "id": f"edge_{edge_id}",
                                 "source": id1,
@@ -714,8 +727,17 @@ class SimpleVectorDB:
             return 0.0
 
 async def init_db(openai_api_key=None):
-    """Initialize database"""
-    db = SimpleVectorDB(openai_api_key)
+    """Initialize database — loads SentenceTransformer in a thread to avoid blocking the event loop."""
+    # Load the model in a worker thread so the async event loop (and httpx Supabase client) stays alive
+    logger.info("⏳ Loading SentenceTransformer model (may take a moment)...")
+    try:
+        st_embedder = await asyncio.to_thread(SentenceTransformer, 'all-MiniLM-L6-v2')
+        logger.info("✅ SentenceTransformer loaded")
+    except Exception as e:
+        logger.warning(f"SentenceTransformer failed to load: {e} — embeddings unavailable")
+        st_embedder = None
+
+    db = SimpleVectorDB(openai_api_key, st_embedder=st_embedder)
     await db._ensure_match_function()
     health = await db.health_check()
     logger.info(f"Database status: {health['status']}")

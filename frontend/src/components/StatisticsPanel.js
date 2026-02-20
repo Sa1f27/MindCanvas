@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 
 const PanelContainer = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
   border-radius: ${props => props.theme.borderRadius.lg};
   border: 1px solid ${props => props.theme.colors.border};
@@ -26,9 +26,11 @@ const PanelHeader = styled.div`
 
 const PanelTitle = styled.h3`
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: ${props => props.theme.colors.text};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 const ToggleButton = styled(motion.button)`
@@ -50,23 +52,31 @@ const PanelContent = styled.div`
 `;
 
 const StatCard = styled(motion.div)`
-  background: linear-gradient(135deg, ${props => props.color}, ${props => props.colorSecondary});
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 3px solid ${props => props.color};
   border-radius: ${props => props.theme.borderRadius.md};
-  padding: ${props => props.theme.spacing.sm};
+  padding: 10px ${props => props.theme.spacing.sm};
   color: white;
   margin-bottom: ${props => props.theme.spacing.sm};
   position: relative;
   overflow: hidden;
-  
+  backdrop-filter: blur(8px);
+
   .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    margin-bottom: ${props => props.theme.spacing.xs};
+    margin-bottom: 2px;
+    color: ${props => props.color};
+    letter-spacing: -0.5px;
   }
-  
+
   .stat-label {
-    font-size: 0.75rem;
-    opacity: 0.9;
+    font-size: 0.7rem;
+    color: ${props => props.theme.colors.textSecondary};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
   }
 `;
 
@@ -195,7 +205,7 @@ const EmptyState = styled.div`
   }
 `;
 
-const CHART_COLORS = ['#667eea', '#ff6b6b', '#4ecdc4', '#f39c12', '#9b59b6', '#e67e22'];
+const CHART_COLORS = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e'];
 
 const StatisticsPanel = ({ title, type, data, stats, trending }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -254,24 +264,24 @@ const StatisticsPanel = ({ title, type, data, stats, trending }) => {
         return (
           <>
             <StatCard
-              color="#667eea"
-              colorSecondary="#764ba2"
+              color="#6366f1"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="stat-value">{processedData?.totalContent || 0}</div>
-              <div className="stat-label">Content Items</div>
+              <div className="stat-label">Knowledge Items</div>
             </StatCard>
 
             <StatCard
-              color="#4ecdc4"
-              colorSecondary="#44a08d"
+              color="#10b981"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <div className="stat-value">{processedData?.vectorEnabled || 0}</div>
-              <div className="stat-label">Vector Embeddings</div>
+              <div className="stat-value">
+                {processedData?.avgQuality ? Number(processedData.avgQuality).toFixed(1) : '—'}<span style={{ fontSize: '0.75rem', opacity: 0.6 }}>/10</span>
+              </div>
+              <div className="stat-label">Avg Quality</div>
             </StatCard>
           </>
         );

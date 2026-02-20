@@ -1,601 +1,446 @@
-// Enhanced KnowledgeGraphViewer with semantic clustering and intelligent layout
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+// Enhanced KnowledgeGraphViewer — brain/neuron clustering, glow nodes, fcose layout
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import styled, { keyframes } from 'styled-components';
 import cytoscape from 'cytoscape';
 import fcose from 'cytoscape-fcose';
-import dagre from 'cytoscape-dagre'; // 1. Import dagre
 
-// Register layouts
 cytoscape.use(fcose);
-cytoscape.use(dagre); // 2. Register dagre
 
-const GraphContainer = styled.div`
-  width: 100%;
-  height: 100%;
+// ─── Styled Components ────────────────────────────────────────────────────────
+
+const Wrapper = styled.div`
   position: relative;
-  border-radius: ${props => props.theme.borderRadius.lg};
-  overflow: hidden;
-  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-`;
-
-const GraphCanvas = styled.div`
   width: 100%;
   height: 100%;
-  cursor: grab;
-  
-  &:active {
-    cursor: grabbing;
-  }
+  background: transparent;
+  overflow: hidden;
 `;
 
-const LoadingSpinner = styled(motion.div)`
+const CyContainer = styled.div`
+  width: 100%;
+  height: 100%;
+`;
+
+const spin = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
+const LoadingPill = styled.div`
   position: absolute;
-  top: 50%;
+  bottom: 20px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-  color: white;
-  text-align: center;
-  
-  .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-top: 4px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 15, 30, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 20px;
+  padding: 6px 14px;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  z-index: 10;
 `;
 
-const LegendContainer = styled.div`
+const Spinner = styled.div`
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: ${spin} 0.8s linear infinite;
+`;
+
+const LoadingText = styled.span`
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.7);
+  letter-spacing: 0.5px;
+`;
+
+const CountBadge = styled.div`
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(15px);
-  padding: ${props => props.collapsed ? '8px' : '12px'};
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 0.75rem;
-  width: ${props => props.collapsed ? 'auto' : '200px'};
-  z-index: 100;
-  cursor: ${props => props.collapsed ? 'pointer' : 'default'};
-  transition: all 0.3s ease;
-  
-  .legend-title {
-    font-weight: 600;
-    margin-bottom: ${props => props.collapsed ? '0' : '8px'};
-    color: #667eea;
-    font-size: 0.8rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-  }
-  
-  .legend-section {
-    margin-bottom: 8px;
-    
-    .section-title {
-      font-weight: 500;
-      margin-bottom: 4px;
-      font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-  }
-  
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
-    font-size: 0.7rem;
-    
-    .color-box {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-  }
-  
-  .edge-legend {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 6px;
-    margin-top: 6px;
-    
-    .edge-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 3px;
-      font-size: 0.7rem;
-      
-      .edge-line {
-        width: 20px;
-        height: 2px;
-        background: currentColor;
-      }
-    }
-  }
+  top: 12px;
+  left: 12px;
+  background: rgba(15, 15, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.55);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  z-index: 5;
 `;
 
-// Semantic color mapping based on content analysis
-const getSemanticColor = (node) => {
-  const title = (node.name || node.title || '').toLowerCase();
-  const topics = (node.topics || node.key_topics || []).join(' ').toLowerCase();
-  const type = (node.type || node.content_type || '').toLowerCase();
-  const allText = `${title} ${topics} ${type}`;
-  
-  // Machine Learning / AI
-  if (/\b(ai|machine learning|neural|deep learning|ml|tensorflow|pytorch|model|algorithm|data science)\b/.test(allText)) {
-    return '#ff4757'; // Bright red
-  }
-  
-  // Programming Languages - JavaScript
-  if (/\b(javascript|js|node\.?js|react|vue|angular|typescript|npm)\b/.test(allText)) {
-    return '#f7df1e'; // JavaScript yellow
-  }
-  
-  // Programming Languages - Python
-  if (/\b(python|django|flask|numpy|pandas|jupyter|pip)\b/.test(allText)) {
-    return '#3776ab'; // Python blue
-  }
-  
-  // Web Development
-  if (/\b(web dev|html|css|frontend|backend|api|http|rest)\b/.test(allText)) {
-    return '#00d2d3'; // Cyan
-  }
-  
-  // Database
-  if (/\b(database|sql|mongodb|postgres|mysql|nosql|query)\b/.test(allText)) {
-    return '#00a085'; // Teal
-  }
-  
-  // DevOps / Cloud
-  if (/\b(devops|docker|kubernetes|aws|cloud|deployment|ci\/cd)\b/.test(allText)) {
-    return '#2ed573'; // Green
-  }
-  
-  // Design / UI/UX
-  if (/\b(design|ui|ux|figma|photoshop|graphics|typography)\b/.test(allText)) {
-    return '#ff6348'; // Orange-red
-  }
-  
-  // Mobile Development
-  if (/\b(mobile|android|ios|react native|flutter|swift|kotlin)\b/.test(allText)) {
-    return '#ff6b9d'; // Pink
-  }
-  
-  // Data Science / Analytics
-  if (/\b(data science|analytics|visualization|statistics|big data)\b/.test(allText)) {
-    return '#a55eea'; // Light purple
-  }
-  
-  // Security
-  if (/\b(security|cybersecurity|encryption|authentication)\b/.test(allText)) {
-    return '#ff3838'; // Red
-  }
-  
-  // Education / Tutorial
-  if (/\b(tutorial|course|learning|education|beginner|guide)\b/.test(allText)) {
-    return '#3742fa'; // Blue
-  }
-  
-  // Content type fallback
-  const typeColors = {
-    'Tutorial': '#4ecdc4',
-    'Documentation': '#9b59b6',
-    'Article': '#f39c12',
-    'Blog': '#e67e22',
-    'Research': '#e74c3c',
-    'News': '#c0392b'
-  };
-  
-  return typeColors[node.content_type || node.type] || '#667eea';
-};
+// ─── Colour Palette ───────────────────────────────────────────────────────────
 
-const KnowledgeGraphViewer = ({
-  data,
-  selectedNode,
-  onNodeSelect,
-  onBackgroundClick,
-  layout = 'dagre', // <--- SWITCHED DEFAULT LAYOUT TO DAGRE
-  className,
-  ...props
-}) => {
-  const containerRef = useRef(null);
-  const cyRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [clusterInfo, setClusterInfo] = useState({});
-  const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
+const CLUSTER_COLORS = [
+  '#6366f1', '#8b5cf6', '#06b6d4', '#10b981',
+  '#f59e0b', '#ef4444', '#ec4899', '#14b8a6',
+  '#f97316', '#a855f7', '#22c55e', '#3b82f6',
+];
 
-  // Process graph data with enhanced clustering awareness
-  const graphData = useMemo(() => {
-    if (!data || !data.nodes || !Array.isArray(data.nodes)) {
-        return { nodes: [], edges: [] };
-    }
+// ─── Cluster key from node ────────────────────────────────────────────────────
+// Use cluster if set, otherwise fall back to type/content_type, then first topic
 
-    const clusters = {};
-    
-    const nodes = data.nodes.map((node, index) => {
-      const nodeId = node.id?.toString() || `node-${index}`;
-      const label = node.title || node.name || `Node ${index + 1}`;
-      const quality = node.quality || node.quality_score || 5;
-      const color = getSemanticColor(node);
-      
-      const topics = node.topics || node.key_topics || [];
-      const primaryTopic = topics[0] || 'General';
-      
-      if (!clusters[primaryTopic]) {
-        clusters[primaryTopic] = [];
-      }
-      clusters[primaryTopic].push(nodeId);
-      
-      const nodeSize = Math.max(20, Math.min(40, quality * 3 + 14));
-      
-      return {
-        data: {
-          id: nodeId,
-          label: label.length > 18 ? label.substring(0, 18) + '...' : label, 
-          color: color,
-          size: nodeSize,
-          quality: quality,
-          topics: topics,
-          cluster: primaryTopic,
-          originalData: node
-        }
-      };
-    });
+function clusterKey(node) {
+  if (node.cluster) return node.cluster;
+  if (node.type && node.type !== 'Unknown') return node.type;
+  if (node.content_type && node.content_type !== 'Unknown') return node.content_type;
+  const topics = node.topics || node.key_topics || [];
+  if (topics.length > 0) return topics[0];
+  return 'General';
+}
 
-    setClusterInfo(clusters);
+// ─── Phyllotaxis cluster-centre placement ─────────────────────────────────────
 
-    const edges = [];
-    if (data.links && Array.isArray(data.links)) {
-      data.links.forEach((link, index) => {
-        const source = link.source?.toString();
-        const target = link.target?.toString();
-        
-        if (source && target && source !== target) {
-          const sourceExists = nodes.some(n => n.data.id === source);
-          const targetExists = nodes.some(n => n.data.id === target);
-          
-          if (sourceExists && targetExists) {
-            const edgeType = link.type || 'default';
-            const similarity = link.similarity || 0.5;
-            
-            let edgeColor = 'rgba(255, 255, 255, 0.2)';
-            let edgeWidth = 1;
-            
-            if (edgeType === 'topic' || similarity > 0.7) {
-              edgeColor = 'rgba(102, 126, 234, 0.7)';
-              edgeWidth = 2.5;
-            } else if (edgeType === 'semantic' || similarity > 0.5) {
-              edgeColor = 'rgba(255, 255, 255, 0.45)';
-              edgeWidth = 1.8;
-            }
-            
-            edges.push({
-              data: {
-                id: `edge-${index}`,
-                source: source,
-                target: target,
-                weight: link.weight || 1,
-                similarity: similarity,
-                type: edgeType,
-                color: edgeColor,
-                width: edgeWidth
-              }
-            });
-          }
-        }
-      });
-    }
+function computeClusterCenters(clusterKeys, W, H) {
+  const n = clusterKeys.length;
+  if (n === 0) return {};
+  if (n === 1) return { [clusterKeys[0]]: { x: W / 2, y: H / 2 } };
 
-    return { nodes, edges };
-  }, [data]);
-  
-  // Initialize Cytoscape with enhanced layout
-  useEffect(() => {
-    if (!containerRef.current || graphData.nodes.length === 0) {
-      return;
-    }
+  const cx = W / 2;
+  const cy = H / 2;
+  const goldenAngle = 137.508 * (Math.PI / 180);
+  const maxR = Math.min(W, H) * 0.32;
+  const centers = {};
 
-    setIsLoading(true);
-
-    if (cyRef.current) {
-      try {
-        cyRef.current.destroy();
-      } catch (error) {
-        console.warn('Error destroying cytoscape:', error);
-      }
-      cyRef.current = null;
-    }
-
-    const initTimeout = setTimeout(() => {
-      if (!containerRef.current) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const cy = cytoscape({
-          container: containerRef.current,
-          elements: [...graphData.nodes, ...graphData.edges],
-          
-          style: [
-            {
-              selector: 'node',
-              style: {
-                'background-color': 'data(color)',
-                'label': 'data(label)',
-                'width': 'data(size)',
-                'height': 'data(size)',
-                'text-valign': 'center',
-                'text-halign': 'center',
-                'font-size': '10px', 
-                'font-weight': '600',
-                'color': '#ffffff',
-                'text-outline-width': 3, 
-                'text-outline-color': '#000000',
-                'border-width': 2,
-                'border-color': 'rgba(255,255,255,0.5)',
-                'border-opacity': 0.7,
-                'transition-property': 'border-width, border-color',
-                'transition-duration': '0.2s'
-              }
-            },
-            {
-              selector: 'node:hover',
-              style: {
-                'border-width': 4,
-                'border-color': '#ffffff',
-                'border-opacity': 1,
-                'cursor': 'pointer'
-              }
-            },
-            {
-              selector: 'node:selected',
-              style: {
-                'border-width': 5, 
-                'border-color': '#667eea',
-                'border-opacity': 1,
-                'z-index': 999
-              }
-            },
-            {
-              selector: 'edge',
-              style: {
-                'width': 'data(width)',
-                'line-color': 'data(color)',
-                'target-arrow-color': 'data(color)',
-                'target-arrow-shape': 'triangle',
-                'target-arrow-size': '10px', 
-                'curve-style': 'bezier',
-                'opacity': 0.8
-              }
-            },
-            {
-              selector: 'edge:selected',
-              style: {
-                'line-color': '#667eea',
-                'target-arrow-color': '#667eea',
-                'width': 3.5,
-                'opacity': 1
-              }
-            }
-          ],
-          
-          layout: layout === 'dagre' ? {
-            name: 'dagre',
-            rankDir: 'TB', // Top-to-Bottom flow
-            spacingFactor: 1.5,
-            nodeSep: 60,
-            edgeSep: 10,
-            rankSep: 80,
-            padding: 50,
-            fit: true,
-            animate: false,
-            stop: function() {
-              console.log('Dagre layout completed');
-            }
-          } : {
-            name: 'fcose',
-            quality: 'proof',
-            animate: false,
-            fit: true,
-            padding: 50,
-            
-            nodeSeparation: 80, 
-            idealEdgeLength: 70, 
-            edgeElasticity: 0.2,
-            nestingFactor: 1.5,
-            gravity: 1.2, 
-            numIter: 3000, 
-            
-            tile: true,
-            tilingPaddingVertical: 40,
-            tilingPaddingHorizontal: 40,
-            
-            randomize: true, 
-            initialEnergyOnIncremental: 0.5,
-            
-            stop: function() {
-              console.log('FCoSE layout completed');
-            }
-          },
-          
-          minZoom: 0.3,
-          maxZoom: 3,
-          wheelSensitivity: 0.2
-        });
-
-        cyRef.current = cy;
-
-        // Event listeners
-        cy.on('tap', 'node', (event) => {
-          const node = event.target;
-          const nodeData = node.data('originalData');
-          if (onNodeSelect && nodeData) {
-            onNodeSelect(nodeData);
-          }
-        });
-
-        cy.on('tap', (event) => {
-          if (event.target === cy && onBackgroundClick) {
-            onBackgroundClick();
-          }
-        });
-
-        // Single layout completion
-        cy.one('layoutstop', () => {
-          setIsLoading(false);
-          cy.stop();
-          
-          setTimeout(() => {
-            try {
-              cy.fit(cy.nodes(), 40);
-            } catch (error) {
-              console.warn('Error fitting:', error);
-            }
-          }, 100);
-        });
-
-        // Emergency stop
-        setTimeout(() => {
-          if (cyRef.current) {
-            setIsLoading(false);
-            cyRef.current.stop();
-          }
-        }, 5000);
-
-      } catch (error) {
-        console.error('Error creating Cytoscape:', error);
-        setIsLoading(false);
-      }
-    }, 200);
-
-    return () => {
-      clearTimeout(initTimeout);
-      if (cyRef.current) {
-        try {
-          cyRef.current.destroy();
-        } catch (error) {
-          console.warn('Error in cleanup:', error);
-        }
-        cyRef.current = null;
-      }
-    };
-  }, [graphData, layout, onNodeSelect, onBackgroundClick]);
-
-  // Empty state
-  if (!data || !data.nodes || data.nodes.length === 0) {
-    return (
-      <GraphContainer className={className} {...props}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          color: 'rgba(255, 255, 255, 0.6)',
-          textAlign: 'center',
-          padding: '40px'
-        }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.5 }}>🕸️</div>
-          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-            No Graph Data
-          </div>
-          <div style={{ lineHeight: 1.5, maxWidth: '400px' }}>
-            Start by importing your browsing history to build your knowledge graph
-          </div>
-        </div>
-      </GraphContainer>
-    );
-  }
-
-  // Get unique clusters for legend
-  const uniqueClusters = Object.keys(clusterInfo).slice(0, 8);
-  const clusterColors = uniqueClusters.map(cluster => {
-    const nodeInCluster = graphData.nodes.find(n => n.data.cluster === cluster);
-    return {
-      name: cluster,
-      color: nodeInCluster?.data.color || '#667eea',
-      count: clusterInfo[cluster]?.length || 0
+  clusterKeys.forEach((key, i) => {
+    const r = maxR * Math.sqrt((i + 0.5) / n);
+    const theta = i * goldenAngle;
+    centers[key] = {
+      x: cx + r * Math.cos(theta),
+      y: cy + r * Math.sin(theta),
     };
   });
 
+  return centers;
+}
+
+// ─── Cytoscape stylesheet ─────────────────────────────────────────────────────
+
+function buildStylesheet() {
+  return [
+    {
+      selector: 'node',
+      style: {
+        shape: 'ellipse',
+        width: 'data(size)',
+        height: 'data(size)',
+        'background-color': 'data(color)',
+        'background-opacity': 0.92,
+        label: 'data(label)',
+        'font-size': '10px',
+        'font-family': "'Inter', 'Segoe UI', sans-serif",
+        'font-weight': '500',
+        color: '#e2e8f0',
+        'text-valign': 'bottom',
+        'text-halign': 'center',
+        'text-margin-y': 4,
+        'text-outline-width': 2,
+        'text-outline-color': 'rgba(10,10,20,0.8)',
+        'text-max-width': '90px',
+        'text-wrap': 'ellipsis',
+        'shadow-blur': 18,
+        'shadow-color': 'data(color)',
+        'shadow-opacity': 0.55,
+        'shadow-offset-x': 0,
+        'shadow-offset-y': 0,
+        'border-width': 1.5,
+        'border-color': 'data(color)',
+        'border-opacity': 0.7,
+        'transition-property': 'background-color, border-color, shadow-blur, width, height',
+        'transition-duration': '0.2s',
+      },
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'border-width': 2.5,
+        'border-color': '#ffffff',
+        'shadow-blur': 28,
+        'shadow-opacity': 0.85,
+        'z-index': 20,
+      },
+    },
+    {
+      selector: 'node.dimmed',
+      style: {
+        opacity: 0.18,
+        'shadow-opacity': 0.05,
+      },
+    },
+    {
+      selector: 'edge',
+      style: {
+        width: 'data(weight)',
+        'line-color': 'data(color)',
+        'line-opacity': 0.3,
+        'curve-style': 'bezier',
+        'target-arrow-shape': 'none',
+        'transition-property': 'line-opacity, width',
+        'transition-duration': '0.2s',
+      },
+    },
+    {
+      selector: 'edge.highlighted',
+      style: {
+        'line-opacity': 0.85,
+        width: 2.5,
+        'z-index': 10,
+      },
+    },
+    {
+      selector: 'edge.dimmed',
+      style: {
+        'line-opacity': 0.03,
+      },
+    },
+  ];
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+// Accepts: data (from App.js store — { nodes, links })
+//          selectedNode, onNodeSelect, onBackgroundClick, layout
+
+const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundClick }) => {
+  const cyRef = useRef(null);
+  const containerRef = useRef(null);
+  const timeoutsRef = useRef([]);
+  const [isLayoutRunning, setIsLayoutRunning] = useState(false);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [edgeCount, setEdgeCount] = useState(0);
+
+  const clearAllTimeouts = useCallback(() => {
+    timeoutsRef.current.forEach(id => clearTimeout(id));
+    timeoutsRef.current = [];
+  }, []);
+
+  const track = useCallback((id) => {
+    timeoutsRef.current.push(id);
+    return id;
+  }, []);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Normalise — store uses `links`, handle both
+    const rawNodes = data?.nodes || [];
+    const rawEdges = data?.edges || data?.links || [];
+
+    if (rawNodes.length === 0) {
+      if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
+      setNodeCount(0);
+      setEdgeCount(0);
+      setIsLayoutRunning(false);
+      return;
+    }
+
+    // ── 1. Assign cluster colour index ──────────────────────────────────────
+    const clusterSet = new Set(rawNodes.map(n => clusterKey(n)));
+    const clusterKeys = Array.from(clusterSet);
+    const clusterColorMap = {};
+    clusterKeys.forEach((k, i) => {
+      clusterColorMap[k] = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+    });
+
+    // ── 2. Phyllotaxis centres ───────────────────────────────────────────────
+    const W = containerRef.current.offsetWidth || 800;
+    const H = containerRef.current.offsetHeight || 600;
+    const centers = computeClusterCenters(clusterKeys, W, H);
+
+    // ── 3. Track cluster membership ──────────────────────────────────────────
+    const clusterMeta = {};
+    clusterKeys.forEach(k => { clusterMeta[k] = []; });
+
+    // ── 4. Build elements with pre-positions ─────────────────────────────────
+    const elements = [];
+
+    rawNodes.forEach(node => {
+      const id = String(node.id);
+      const cluster = clusterKey(node);
+      const center = centers[cluster] || { x: W / 2, y: H / 2 };
+      clusterMeta[cluster].push(id);
+
+      const clusterSize = rawNodes.filter(n => clusterKey(n) === cluster).length;
+      const idx = clusterMeta[cluster].length - 1;
+      const innerR = Math.min(70, Math.max(22, clusterSize * 8));
+      const angle = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
+      const jx = (Math.random() - 0.5) * 12;
+      const jy = (Math.random() - 0.5) * 12;
+
+      const quality = node.quality_score || node.quality || 5;
+      const nodeSize = Math.min(54, Math.max(18, 18 + quality * 2));
+
+      elements.push({
+        group: 'nodes',
+        data: {
+          id,
+          label: node.title || node.name || id,
+          color: clusterColorMap[cluster],
+          cluster,
+          size: nodeSize,
+          rawData: node,
+        },
+        position: {
+          x: center.x + innerR * Math.cos(angle) + jx,
+          y: center.y + innerR * Math.sin(angle) + jy,
+        },
+      });
+    });
+
+    // Build a quick id→cluster lookup
+    const nodeClusterMap = {};
+    elements.forEach(el => {
+      if (el.group === 'nodes') nodeClusterMap[el.data.id] = el.data.cluster;
+    });
+
+    rawEdges.forEach((edge, i) => {
+      const src = String(edge.source || edge.from);
+      const tgt = String(edge.target || edge.to);
+      if (!src || !tgt || src === tgt) return;
+      const sameCluster = nodeClusterMap[src] === nodeClusterMap[tgt];
+      const srcCluster = nodeClusterMap[src] || 'default';
+
+      elements.push({
+        group: 'edges',
+        data: {
+          id: `e${i}-${src}-${tgt}`,
+          source: src,
+          target: tgt,
+          weight: sameCluster ? 1.2 : 0.5,
+          color: sameCluster
+            ? clusterColorMap[srcCluster]
+            : 'rgba(148,163,184,0.35)',
+          sameCluster,
+        },
+      });
+    });
+
+    setNodeCount(rawNodes.length);
+    setEdgeCount(rawEdges.length);
+
+    // ── 5. fixedNodeConstraint — anchor first node of each cluster ───────────
+    const fixedNodeConstraint = clusterKeys
+      .filter(k => clusterMeta[k].length > 0)
+      .map(k => ({ nodeId: clusterMeta[k][0], position: centers[k] }));
+
+    // ── 6. Destroy old instance ──────────────────────────────────────────────
+    clearAllTimeouts();
+    if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
+
+    setIsLayoutRunning(true);
+
+    const cy = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: buildStylesheet(),
+      layout: { name: 'preset' },
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      minZoom: 0.1,
+      maxZoom: 4,
+      wheelSensitivity: 0.3,
+    });
+
+    cyRef.current = cy;
+
+    // ── 7. layoutstop attached BEFORE layout runs ─────────────────────────────
+    cy.one('layoutstop', () => {
+      clearAllTimeouts();
+      setIsLayoutRunning(false);
+      try { cy.fit(undefined, 60); } catch (_) {}
+    });
+
+    // Safety fallback
+    track(setTimeout(() => {
+      setIsLayoutRunning(false);
+      try { cy.fit(undefined, 60); } catch (_) {}
+    }, 8000));
+
+    // ── 8. fcose layout ───────────────────────────────────────────────────────
+    if (rawNodes.length > 1) {
+      cy.layout({
+        name: 'fcose',
+        quality: 'proof',
+        animate: false,
+        randomize: false,
+        fixedNodeConstraint,
+        idealEdgeLength: edge => edge.data('sameCluster') ? 45 : 200,
+        edgeElasticity: edge => edge.data('sameCluster') ? 0.08 : 0.45,
+        nodeRepulsion: () => 6500,
+        numIter: 2500,
+        tile: true,
+        tilingPaddingVertical: 30,
+        tilingPaddingHorizontal: 30,
+        gravity: 0.2,
+        gravityRange: 3.8,
+      }).run();
+    } else {
+      cy.fit(undefined, 60);
+      setIsLayoutRunning(false);
+      clearAllTimeouts();
+    }
+
+    // ── 9. Interactions ───────────────────────────────────────────────────────
+    cy.on('mouseover', 'node', e => {
+      const node = e.target;
+      const connectedEdges = node.connectedEdges();
+      const neighbors = connectedEdges.connectedNodes();
+      cy.elements().not(node).not(connectedEdges).not(neighbors).addClass('dimmed');
+      connectedEdges.addClass('highlighted');
+    });
+
+    cy.on('mouseout', 'node', () => {
+      cy.elements().removeClass('dimmed highlighted');
+    });
+
+    cy.on('tap', 'node', e => {
+      if (onNodeSelect) onNodeSelect(e.target.data('rawData'));
+    });
+
+    cy.on('tap', e => {
+      if (e.target === cy) {
+        cy.elements().removeClass('dimmed highlighted');
+        if (onBackgroundClick) onBackgroundClick();
+      }
+    });
+
+    return () => {
+      clearAllTimeouts();
+      if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  // Highlight externally selected node
+  useEffect(() => {
+    if (!cyRef.current) return;
+    cyRef.current.elements().removeClass('dimmed highlighted');
+    if (selectedNode?.id) {
+      const node = cyRef.current.getElementById(String(selectedNode.id));
+      if (node.length) {
+        const edges = node.connectedEdges();
+        edges.addClass('highlighted');
+        cyRef.current.elements().not(node).not(edges).not(edges.connectedNodes()).addClass('dimmed');
+        cyRef.current.animate({ center: { eles: node }, zoom: 1.5 }, { duration: 350 });
+      }
+    }
+  }, [selectedNode]);
+
   return (
-    <GraphContainer className={className} {...props}>
-      <GraphCanvas ref={containerRef} />
-      
-      <LegendContainer collapsed={isLegendCollapsed}>
-        <div className="legend-title" onClick={() => setIsLegendCollapsed(!isLegendCollapsed)}>
-          <span>🧠 {isLegendCollapsed ? 'Legend' : 'Knowledge Clusters'}</span>
-          <span>{isLegendCollapsed ? '+' : '−'}</span>
-        </div>
-        
-        {!isLegendCollapsed && (
-          <>
-            <div className="legend-section">
-              <div className="section-title">Semantic Topics</div>
-              {clusterColors.map((cluster, idx) => (
-                <div key={idx} className="legend-item">
-                  <div className="color-box" style={{ background: cluster.color }} />
-                  <span>{cluster.name} ({cluster.count})</span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="edge-legend">
-              <div className="section-title">Connection Strength</div>
-              <div className="edge-item">
-                <div className="edge-line" style={{ 
-                  background: 'rgba(102, 126, 234, 0.8)',
-                  height: '3px'
-                }} />
-                <span>Strong (Shared Topics)</span>
-              </div>
-              <div className="edge-item">
-                <div className="edge-line" style={{ 
-                  background: 'rgba(255, 255, 255, 0.5)',
-                  height: '2px'
-                }} />
-                <span>Medium (Semantic)</span>
-              </div>
-              <div className="edge-item">
-                <div className="edge-line" style={{ 
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  height: '1px'
-                }} />
-                <span>Weak (Same Type)</span>
-              </div>
-            </div>
-          </>
-        )}
-      </LegendContainer>
-      
-      <AnimatePresence>
-        {isLoading && (
-          <LoadingSpinner
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="spinner" />
-            <div>Building semantic graph...</div>
-          </LoadingSpinner>
-        )}
-      </AnimatePresence>
-    </GraphContainer>
+    <Wrapper>
+      <CyContainer ref={containerRef} />
+      {nodeCount > 0 && (
+        <CountBadge>{nodeCount} nodes · {edgeCount} edges</CountBadge>
+      )}
+      {isLayoutRunning && (
+        <LoadingPill>
+          <Spinner />
+          <LoadingText>Arranging neural clusters…</LoadingText>
+        </LoadingPill>
+      )}
+    </Wrapper>
   );
 };
 
