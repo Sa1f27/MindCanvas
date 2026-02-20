@@ -11,41 +11,42 @@ const ControlContainer = styled(motion.div)`
 `;
 
 const ControlButton = styled(motion.button)`
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: ${props => props.theme.colors.text};
-  padding: ${props => props.theme.spacing.md};
+  padding: ${props => props.theme.spacing.sm};
   border-radius: ${props => props.theme.borderRadius.md};
   cursor: pointer;
   font-size: 1rem;
   transition: all ${props => props.theme.animations.fast};
   position: relative;
-  min-width: 44px;
-  height: 44px;
+  min-width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-    box-shadow: ${props => props.theme.shadows.md};
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
-  
+
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
     transform: none;
   }
-  
+
   &.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-color: #667eea;
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
   }
 `;
 
@@ -71,16 +72,16 @@ const DropdownButton = styled(ControlButton)`
 
 const DropdownMenu = styled(motion.div)`
   position: absolute;
-  top: calc(100% + ${props => props.theme.spacing.sm});
+  top: calc(100% + 6px);
   left: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(13, 13, 28, 0.95);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: ${props => props.theme.borderRadius.md};
-  box-shadow: ${props => props.theme.shadows.lg};
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   z-index: 1000;
-  min-width: 200px;
+  min-width: 210px;
 `;
 
 const DropdownItem = styled.div`
@@ -98,7 +99,8 @@ const DropdownItem = styled.div`
   }
   
   &.active {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
   }
   
   .icon {
@@ -174,19 +176,19 @@ const ControlPanel = ({
     exportKnowledgeGraph
   } = useKnowledgeStore();
 
-  // Simplified layout options - only cluster-based layouts
+  // Layout options — only include layouts registered in KnowledgeGraphViewer
   const layoutOptions = [
     {
       id: 'fcose',
-      name: 'Force-Directed Clustering',
+      name: 'Force-Directed',
       icon: '🌐',
-      description: 'Physics-based layout with smart clustering'
+      description: 'Physics-based — related nodes cluster together naturally'
     },
     {
-      id: 'cola',
-      name: 'Constraint-Based Clustering',
-      icon: '🎯',
-      description: 'Organized clusters with constraints'
+      id: 'dagre',
+      name: 'Hierarchical',
+      icon: '🏗️',
+      description: 'Top-down hierarchy — great for seeing knowledge flow'
     }
   ];
 
@@ -270,7 +272,7 @@ const ControlPanel = ({
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
             >
-              <DropdownHeader>Cluster Layouts</DropdownHeader>
+              <DropdownHeader>Graph Layout</DropdownHeader>
               {layoutOptions.map((layout) => (
                 <DropdownItem
                   key={layout.id}

@@ -4,14 +4,20 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: mindcanvas-backend
+    restart: unless-stopped
     ports:
       - "8090:8090"
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     volumes:
-      # Mount the backend code for hot-reloading during development
-      # For production, you might remove this to keep the image immutable
-      - ./backend:/app
+      - st_model_cache:/app/.st_cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - mindcanvas-net
 
@@ -19,11 +25,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - REACT_APP_API_URL=/api
     container_name: mindcanvas-frontend
+    restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3030:3030"
     depends_on:
       - backend
     networks:
@@ -32,3 +37,6 @@ services:
 networks:
   mindcanvas-net:
     driver: bridge
+
+volumes:
+  st_model_cache:

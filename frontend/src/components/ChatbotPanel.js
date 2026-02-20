@@ -7,9 +7,8 @@ const ChatContainer = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, 
-    rgba(102, 126, 234, 0.1) 0%, R
-    rgba(118, 75, 162, 0.1) 100%);
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.1);
   border-radius: ${props => props.theme.borderRadius.lg};
   overflow: hidden;
 `;
@@ -31,13 +30,13 @@ const ChatTitle = styled.h3`
   display: flex;
   align-items: center;
   gap: ${props => props.theme.spacing.sm};
-  
+
   .status-indicator {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: ${props => props.isOnline ? props.theme.colors.success : props.theme.colors.error};
-    animation: ${props => props.isOnline ? 'pulse 2s infinite' : 'none'};
+    background: ${props => props.$isOnline ? props.theme.colors.success : props.theme.colors.error};
+    animation: ${props => props.$isOnline ? 'pulse 2s infinite' : 'none'};
   }
   
   @keyframes pulse {
@@ -105,7 +104,7 @@ const Message = styled(motion.div)`
     flex-direction: row-reverse;
     
     .message-bubble {
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
       color: white;
       margin-left: 20%;
     }
@@ -164,11 +163,11 @@ const Avatar = styled.div`
   flex-shrink: 0;
   
   &.user {
-    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
   }
-  
+
   &.assistant {
-    background: linear-gradient(135deg, #4ecdc4, #44a08d);
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
   }
 `;
 
@@ -206,12 +205,12 @@ const MessageInput = styled.textarea`
   &:focus {
     outline: none;
     border-color: ${props => props.theme.colors.primary};
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
   }
 `;
 
 const SendButton = styled(motion.button)`
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border: none;
   color: white;
   padding: ${props => props.theme.spacing.sm};
@@ -340,7 +339,7 @@ const ChatbotPanel = ({ graphData }) => {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await fetch('http://localhost:8090/api/chat/health');
+        const response = await fetch('/api/chat/health');
         const health = await response.json();
         setIsOnline(health.status === 'healthy');
       } catch (error) {
@@ -357,7 +356,7 @@ const ChatbotPanel = ({ graphData }) => {
   useEffect(() => {
     const loadSuggestions = async () => {
       try {
-        const response = await fetch('http://localhost:8090/api/chat/suggestions?limit=5');
+        const response = await fetch('/api/chat/suggestions?limit=5');
         const data = await response.json();
         setSuggestions(data.suggestions || []);
         setIsOnline(true);
@@ -407,7 +406,7 @@ const ChatbotPanel = ({ graphData }) => {
     setShowSuggestions(false);
     
     try {
-      const response = await fetch('http://localhost:8090/api/chat', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -498,7 +497,7 @@ const ChatbotPanel = ({ graphData }) => {
   return (
     <ChatContainer>
       <ChatHeader>
-        <ChatTitle isOnline={isOnline}>
+        <ChatTitle $isOnline={isOnline}>
           🤖 MindCanvas AI
           <div className="status-indicator" />
         </ChatTitle>

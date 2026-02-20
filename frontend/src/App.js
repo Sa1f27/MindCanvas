@@ -16,21 +16,21 @@ import SettingsPanel from './components/SettingsPanel';
 import StatisticsPanel from './components/StatisticsPanel';
 import PerformanceMonitor from './components/PerformanceMonitor';
 
-// Enhanced theme with all necessary properties
+// Professional dark theme
 const theme = {
   colors: {
-    primary: '#667eea',
-    secondary: '#764ba2',
-    accent: '#ff6b6b',
-    success: '#4ecdc4',
-    warning: '#f39c12',
-    error: '#e74c3c',
-    bg: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
-    surface: 'rgba(255, 255, 255, 0.05)',
-    surfaceHover: 'rgba(255, 255, 255, 0.1)',
-    text: '#ffffff',
-    textSecondary: 'rgba(255, 255, 255, 0.7)',
-    border: 'rgba(255, 255, 255, 0.1)',
+    primary: '#6366f1',
+    secondary: '#8b5cf6',
+    accent: '#06b6d4',
+    success: '#10b981',
+    warning: '#f59e0b',
+    error: '#ef4444',
+    bg: 'linear-gradient(160deg, #0b0b18 0%, #0e0e1e 55%, #101024 100%)',
+    surface: 'rgba(255, 255, 255, 0.04)',
+    surfaceHover: 'rgba(255, 255, 255, 0.08)',
+    text: '#e2e8f0',
+    textSecondary: 'rgba(226, 232, 240, 0.5)',
+    border: 'rgba(255, 255, 255, 0.07)',
   },
   spacing: {
     xs: '4px',
@@ -41,15 +41,15 @@ const theme = {
     xxl: '48px'
   },
   borderRadius: {
-    sm: '8px',
-    md: '12px',
-    lg: '16px',
-    xl: '24px'
+    sm: '6px',
+    md: '10px',
+    lg: '14px',
+    xl: '20px'
   },
   shadows: {
-    sm: '0 4px 15px rgba(0, 0, 0, 0.1)',
-    md: '0 8px 32px rgba(0, 0, 0, 0.15)',
-    lg: '0 16px 64px rgba(0, 0, 0, 0.2)',
+    sm: '0 2px 12px rgba(0, 0, 0, 0.25)',
+    md: '0 8px 30px rgba(0, 0, 0, 0.35)',
+    lg: '0 20px 60px rgba(0, 0, 0, 0.45)',
   },
   animations: {
     fast: '0.15s ease',
@@ -69,80 +69,81 @@ const GlobalStyle = createGlobalStyle`
   }
   
   html, body {
-    height: 100%; /* Ensure html and body can take full height */
+    height: 100%;
+    width: 100%;
     font-family: ${props => props.theme.fonts.primary};
     background: ${props => props.theme.colors.bg};
     color: ${props => props.theme.colors.text};
-    /* Removed overflow: hidden; to allow scrolling */
-    overflow-x: hidden; /* Prevent horizontal scroll on body */
+    overflow: hidden;
   }
-  
+
   #root {
-    min-height: 100vh; /* Ensure root takes at least full viewport height */
-    width: 100vw;
-    /* Removed overflow: hidden; */
-    display: flex; /* Allows AppContainer to grow and fill height */
+    height: 100%;
+    width: 100%;
+    display: flex;
     flex-direction: column;
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 5px;
   }
-  
+
   ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: transparent;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 `;
 
 const AppContainer = styled.div`
-  min-height: 100vh;
+  height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-areas:
-    "left-panel main-graph right-panel";
-  grid-template-columns: 240px 1fr 260px; /* Reduced side panel width */
-  grid-template-rows: 1fr;
+  grid-template-areas: "left-panel main-graph right-panel";
+  grid-template-columns: 220px 1fr 260px;
+  grid-template-rows: 100vh;
   gap: ${props => props.theme.spacing.sm};
   padding: ${props => props.theme.spacing.sm};
-  flex-grow: 1; /* Allows AppContainer to fill #root if #root is flex */
-  
+  overflow: hidden;
+
   @media (max-width: 1400px) {
-    grid-template-columns: 220px 1fr 240px; /* Adjusted for medium screens */
+    grid-template-columns: 200px 1fr 240px;
   }
-  
-  @media (max-width: 1200px) {
-    grid-template-areas: 
+
+  @media (max-width: 1100px) {
+    grid-template-areas:
       "main-graph"
-      "left-panel" 
+      "left-panel"
       "right-panel";
     grid-template-columns: 1fr;
-    grid-template-rows: 40vh auto auto; /* Reduced graph area height */
-    overflow-y: auto; /* Allow scrolling on mobile */
+    grid-template-rows: 55vh auto auto;
+    height: auto;
+    overflow-y: auto;
   }
 `;
 
 const MainGraphArea = styled(motion.div)`
   grid-area: main-graph;
-  background: ${props => props.theme.colors.surface};
+  background: rgba(255, 255, 255, 0.03);
   border-radius: ${props => props.theme.borderRadius.lg};
   backdrop-filter: blur(20px);
   border: 1px solid ${props => props.theme.colors.border};
   overflow: hidden;
-  box-shadow: ${props => props.theme.shadows.lg};
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.05), ${props => props.theme.shadows.lg};
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 600px;
-  
-  @media (max-width: 1200px) {
-    min-height: 35vh; /* Adjusted to match grid-template-rows change */
-    height: 40vh; /* Adjusted to match grid-template-rows change */
+  min-height: 0;
+
+  @media (max-width: 1100px) {
+    min-height: 50vh;
   }
 `;
 
@@ -150,44 +151,37 @@ const SidePanel = styled(motion.div)`
   display: flex;
   flex-direction: column;
   gap: ${props => props.theme.spacing.sm};
-  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: ${props => props.theme.spacing.xs}; /* Space for scrollbar */
-  
-  /* Custom scrollbar styling */
+  min-height: 0;
+
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
   }
-  
+
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 3px;
+    background: transparent;
   }
-  
+
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.25);
   }
-  
-  @media (max-width: 1200px) {
-    height: auto;
-    max-height: 70vh;
-    overflow-y: auto;
+
+  @media (max-width: 1100px) {
+    overflow-y: visible;
   }
 `;
 
 const ChatbotArea = styled(motion.div)`
-  grid-area: chatbot;
   border-radius: ${props => props.theme.borderRadius.lg};
-  overflow: hidden; /* Keep overflow hidden for the ChatbotPanel's internal scroll */
+  overflow: hidden;
   flex: 1;
-  min-height: 400px;
-  max-height: 60vh;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -262,7 +256,7 @@ const EmptyGraphState = styled.div`
 `;
 
 const Button = styled(motion.button)`
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border: none;
   color: white;
   padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
@@ -285,32 +279,37 @@ const Button = styled(motion.button)`
 
 const StatusBanner = styled(motion.div)`
   position: fixed;
-  top: ${props => props.theme.spacing.lg};
-  right: ${props => props.theme.spacing.lg};
-  background: ${props => props.connected ?
-    'linear-gradient(135deg, #4ecdc4, #44a08d)' :
-    'linear-gradient(135deg, #e74c3c, #c0392b)'};
-  color: white;
-  padding: ${props => props.theme.spacing.sm} ${props => props.theme.spacing.md};
-  border-radius: ${props => props.theme.borderRadius.md};
-  font-size: 0.9rem;
+  top: ${props => props.theme.spacing.md};
+  right: ${props => props.theme.spacing.md};
+  background: ${props => props.$connected ?
+    'rgba(16, 185, 129, 0.12)' :
+    'rgba(239, 68, 68, 0.12)'};
+  color: ${props => props.$connected ? '#10b981' : '#ef4444'};
+  border: 1px solid ${props => props.$connected ?
+    'rgba(16, 185, 129, 0.25)' :
+    'rgba(239, 68, 68, 0.25)'};
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 0.75rem;
   font-weight: 600;
-  z-index: 1000;
+  z-index: 1001;
   display: flex;
   align-items: center;
-  gap: ${props => props.theme.spacing.sm};
-  
+  gap: 6px;
+  backdrop-filter: blur(12px);
+  letter-spacing: 0.1px;
+
   .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: currentColor;
-    animation: ${props => props.connected ? 'pulse 2s infinite' : 'none'};
+    animation: ${props => props.$connected ? 'pulse 2s infinite' : 'none'};
   }
-  
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50% { opacity: 0.3; }
   }
 `;
 
@@ -318,7 +317,7 @@ const ErrorToast = styled(motion.div)`
   position: fixed;
   bottom: 20px;
   left: 20px;
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  background: rgba(239, 68, 68, 0.95);
   color: white;
   padding: 16px 20px;
   border-radius: 12px;
@@ -359,25 +358,31 @@ const ErrorToast = styled(motion.div)`
 
 const PanelHeaderTitle = styled(motion.div)`
   text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(99, 102, 241, 0.06);
+  backdrop-filter: blur(12px);
   border-radius: ${props => props.theme.borderRadius.lg};
-  padding: ${props => props.theme.spacing.md};
-  border: 1px solid ${props => props.theme.colors.border};
-  margin-bottom: ${props => props.theme.spacing.md};
+  padding: 14px ${props => props.theme.spacing.md};
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  margin-bottom: ${props => props.theme.spacing.sm};
   margin-top: 0;
-  
+
   h1 {
-    font-size: 1.4rem; /* Adjusted size for panel */
-    margin-bottom: ${props => props.theme.spacing.xs};
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.5px;
   }
+
   .subtitle {
-    font-size: 0.8rem; /* Adjusted size for panel */
-    opacity: 0.8;
+    font-size: 0.7rem;
+    color: ${props => props.theme.colors.textSecondary};
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-weight: 500;
   }
 `;
 
@@ -585,7 +590,7 @@ const App = () => {
       <AppContainer>
         {/* Status Banner */}
         <StatusBanner
-          connected={backendConnected}
+          $connected={backendConnected}
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -606,26 +611,26 @@ const App = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
-            <h1>🧠 MindCanvas</h1>
-            <div className="subtitle">AI-Powered Knowledge Graph</div>
+            <h1>MindCanvas</h1>
+            <div className="subtitle">AI Knowledge Graph</div>
           </PanelHeaderTitle>
 
           <StatisticsPanel
-            title=" Overview"
+            title="Overview"
             type="overview"
             data={overviewStats}
             stats={stats}
           />
 
           <StatisticsPanel
-            title=" Content Types"
+            title="Content Types"
             type="contentTypes"
             data={contentTypeData}
           />
 
           {trendingData.length > 0 && (
             <StatisticsPanel
-              title="📁 Categories"
+              title="Categories"
               type="trending"
               trending={trendingData}
             />
@@ -719,7 +724,7 @@ const App = () => {
           </ChatbotArea>
           {recommendationsData.length > 0 && (
             <StatisticsPanel
-              title=" Recommendations"
+              title="Recommendations"
               type="recommendations"
               data={recommendationsData}
             />

@@ -245,7 +245,7 @@ const ActionButtons = styled.div`
 `;
 
 const ActionButton = styled(motion.button)`
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border: none;
   color: white;
   padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.lg};
@@ -378,20 +378,20 @@ const NodeDetailsModal = ({ node, onClose, graphData }) => {
 
   const getNodeTypeColor = (type) => {
     const colorMap = {
-      'Tutorial': '#ff6b6b',
-      'Documentation': '#4ecdc4',
-      'Article': '#9b59b6',
-      'Blog': '#f39c12',
-      'Research': '#e67e22',
-      'News': '#e74c3c'
+      'Tutorial': '#06b6d4',
+      'Documentation': '#8b5cf6',
+      'Article': '#f59e0b',
+      'Blog': '#f97316',
+      'Research': '#ef4444',
+      'News': '#dc2626'
     };
-    return colorMap[type] || '#667eea';
+    return colorMap[type] || '#6366f1';
   };
 
   const getQualityColor = (quality) => {
-    if (quality >= 8) return '#2ecc71';
-    if (quality >= 6) return '#f39c12';
-    return '#e74c3c';
+    if (quality >= 8) return '#10b981';
+    if (quality >= 6) return '#f59e0b';
+    return '#ef4444';
   };
 
   return (
@@ -420,7 +420,7 @@ const NodeDetailsModal = ({ node, onClose, graphData }) => {
                 </MetaBadge>
               )}
               {node.processing_method && (
-                <MetaBadge color="#9b59b6">
+                <MetaBadge color="#8b5cf6">
                   {node.processing_method}
                 </MetaBadge>
               )}

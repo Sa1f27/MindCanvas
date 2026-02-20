@@ -383,14 +383,14 @@ const SearchOverlay = ({ onClose, onSearch, graphData }) => {
 
   const getResultColor = (contentType) => {
     const colorMap = {
-      'Tutorial': '#ff6b6b',
-      'Documentation': '#4ecdc4',
-      'Article': '#9b59b6',
-      'Blog': '#f39c12',
-      'Research': '#e67e22',
-      'News': '#e74c3c'
+      'Tutorial': '#06b6d4',
+      'Documentation': '#8b5cf6',
+      'Article': '#f59e0b',
+      'Blog': '#f97316',
+      'Research': '#ef4444',
+      'News': '#dc2626'
     };
-    return colorMap[contentType] || '#667eea';
+    return colorMap[contentType] || '#6366f1';
   };
 
   return (
@@ -500,7 +500,7 @@ const SearchOverlay = ({ onClose, onSearch, graphData }) => {
                   <ResultTitle>{result.title || result.name}</ResultTitle>
                   <ResultMeta>
                     {result.similarity && (
-                      <ResultBadge color="#4ecdc4">
+                      <ResultBadge color="#06b6d4">
                         {(result.similarity * 100).toFixed(0)}% match
                       </ResultBadge>
                     )}
@@ -508,7 +508,7 @@ const SearchOverlay = ({ onClose, onSearch, graphData }) => {
                       {result.content_type || result.type || 'Unknown'}
                     </ResultBadge>
                     {(result.quality_score || result.quality) && (
-                      <ResultBadge color="#f39c12">
+                      <ResultBadge color="#f59e0b">
                         {result.quality_score || result.quality}/10
                       </ResultBadge>
                     )}
