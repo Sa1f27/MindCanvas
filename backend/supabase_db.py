@@ -109,17 +109,30 @@ class SimpleVectorDB:
             if not item.embedding:
                 text = f"{item.title} {item.summary}"
                 item.embedding = await self.generate_embedding(text, use_openai=bool(self.openai_embedder))
-            
+
             data = asdict(item)
-            
+
             if isinstance(data['visit_timestamp'], datetime):
                 data['visit_timestamp'] = data['visit_timestamp'].isoformat()
-            
-            result = await asyncio.to_thread(
-                self.client.table('processed_content').upsert(data).execute
-            )
-            return bool(result.data)
-            
+
+            try:
+                result = await asyncio.to_thread(
+                    self.client.table('processed_content').upsert(data).execute
+                )
+                return bool(result.data)
+            except Exception as dim_err:
+                err_msg = str(dim_err)
+                if 'dimensions' in err_msg or '1536' in err_msg:
+                    # Supabase column is vector(1536) but we generate 384-dim embeddings
+                    # Store without embedding until the DB schema is updated
+                    logger.warning(f"Embedding dimension mismatch — storing without embedding for {item.url}")
+                    data.pop('embedding', None)
+                    result = await asyncio.to_thread(
+                        self.client.table('processed_content').upsert(data).execute
+                    )
+                    return bool(result.data)
+                raise
+
         except Exception as e:
             logger.error(f"Store failed for {item.url}: {e}")
             return False
