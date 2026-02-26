@@ -108,7 +108,7 @@ const AppContainer = styled.div`
   display: grid;
   grid-template-areas: "left-panel main-graph right-panel";
   grid-template-columns: 272px 1fr 308px;
-  grid-template-rows: 100vh;
+  grid-template-rows: 1fr;
   gap: 10px;
   padding: 10px;
   overflow: hidden;
