@@ -11,5 +11,5 @@
       "service_worker": "background.js",
       "type": "module"
     },
-    "host_permissions": ["http://localhost:8090/*"]
+    "host_permissions": ["http://localhost:8090/*", "http://localhost:3030/*"]
   }
