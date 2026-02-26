@@ -1,4 +1,4 @@
-// Enhanced KnowledgeGraphViewer — brain/neuron clustering, glow nodes, fcose layout
+// KnowledgeGraphViewer — neuron-sphere nodes, premium glow, fcose layout
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import cytoscape from 'cytoscape';
@@ -33,11 +33,11 @@ const LoadingPill = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(15, 15, 30, 0.85);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(11, 11, 24, 0.88);
+  border: 1px solid rgba(99, 102, 241, 0.28);
   border-radius: 20px;
-  padding: 6px 14px;
-  backdrop-filter: blur(12px);
+  padding: 7px 16px;
+  backdrop-filter: blur(14px);
   pointer-events: none;
   z-index: 10;
 `;
@@ -45,31 +45,34 @@ const LoadingPill = styled.div`
 const Spinner = styled.div`
   width: 12px;
   height: 12px;
-  border: 2px solid rgba(99, 102, 241, 0.3);
+  border: 2px solid rgba(99, 102, 241, 0.25);
   border-top-color: #6366f1;
   border-radius: 50%;
-  animation: ${spin} 0.8s linear infinite;
+  animation: ${spin} 0.75s linear infinite;
 `;
 
 const LoadingText = styled.span`
   font-size: 11px;
-  color: rgba(226, 232, 240, 0.7);
-  letter-spacing: 0.5px;
+  color: rgba(226, 232, 240, 0.6);
+  letter-spacing: 0.4px;
+  font-family: 'Inter', sans-serif;
 `;
 
 const CountBadge = styled.div`
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(15, 15, 30, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  bottom: 14px;
+  left: 14px;
+  background: rgba(11, 11, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
-  padding: 5px 10px;
+  padding: 5px 11px;
   font-size: 11px;
-  color: rgba(226, 232, 240, 0.55);
-  backdrop-filter: blur(8px);
+  color: rgba(226, 232, 240, 0.45);
+  backdrop-filter: blur(10px);
   pointer-events: none;
   z-index: 5;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.2px;
 `;
 
 // ─── Colour Palette ───────────────────────────────────────────────────────────
@@ -80,8 +83,35 @@ const CLUSTER_COLORS = [
   '#f97316', '#a855f7', '#22c55e', '#3b82f6',
 ];
 
+// ─── Node SVG generator ───────────────────────────────────────────────────────
+// Holographic orb: dark core → colored rim light.
+// Avoids white-highlight "plastic ball" look — instead uses the cluster colour
+// as the light source, creating a sci-fi bioluminescent cell appearance.
+
+function makeNodeSvg(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+    <defs>
+      <radialGradient id="body" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"   stop-color="#05050e"/>
+        <stop offset="38%"  stop-color="${color}" stop-opacity="0.08"/>
+        <stop offset="62%"  stop-color="${color}" stop-opacity="0.42"/>
+        <stop offset="82%"  stop-color="${color}" stop-opacity="0.82"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="1"/>
+      </radialGradient>
+      <radialGradient id="spec" cx="36%" cy="30%" r="32%">
+        <stop offset="0%"   stop-color="rgba(255,255,255,0.16)"/>
+        <stop offset="55%"  stop-color="rgba(255,255,255,0.04)"/>
+        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="58" fill="url(#body)"/>
+    <circle cx="60" cy="60" r="58" fill="url(#spec)"/>
+    <circle cx="60" cy="60" r="56" fill="none" stroke="${color}" stroke-width="1.2" stroke-opacity="0.55"/>
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
 // ─── Cluster key from node ────────────────────────────────────────────────────
-// Use cluster if set, otherwise fall back to type/content_type, then first topic
 
 function clusterKey(node) {
   if (node.cluster) return node.cluster;
@@ -102,7 +132,8 @@ function computeClusterCenters(clusterKeys, W, H) {
   const cx = W / 2;
   const cy = H / 2;
   const goldenAngle = 137.508 * (Math.PI / 180);
-  const maxR = Math.min(W, H) * 0.32;
+  // Wider spread so clusters start further apart → less initial overlap
+  const maxR = Math.min(W, H) * 0.36;
   const centers = {};
 
   clusterKeys.forEach((key, i) => {
@@ -127,47 +158,67 @@ function buildStylesheet() {
         shape: 'ellipse',
         width: 'data(size)',
         height: 'data(size)',
-        'background-color': 'data(color)',
-        'background-opacity': 0.92,
+
+        // SVG neuron-sphere background — replaces flat solid color
+        'background-color': 'data(color)',      // fallback if image fails
+        'background-opacity': 0,               // hide solid bg; SVG takes over
+        'background-image': 'data(bgImage)',
+        'background-fit': 'cover',
+        'background-image-opacity': 1,
+
+        // Label
         label: 'data(label)',
         'font-size': '10px',
         'font-family': "'Inter', 'Segoe UI', sans-serif",
-        'font-weight': '500',
+        'font-weight': '600',
         color: '#e2e8f0',
         'text-valign': 'bottom',
         'text-halign': 'center',
-        'text-margin-y': 4,
-        'text-outline-width': 2,
-        'text-outline-color': 'rgba(10,10,20,0.8)',
-        'text-max-width': '90px',
+        'text-margin-y': 6,
+        'text-outline-width': 2.5,
+        'text-outline-color': 'rgba(6,6,16,0.9)',
+        'text-max-width': '88px',
         'text-wrap': 'ellipsis',
-        'shadow-blur': 18,
+
+        // Outer aura / glow — coloured atmospheric halo
+        'shadow-blur': 36,
         'shadow-color': 'data(color)',
-        'shadow-opacity': 0.55,
+        'shadow-opacity': 0.65,
         'shadow-offset-x': 0,
         'shadow-offset-y': 0,
-        'border-width': 1.5,
-        'border-color': 'data(color)',
-        'border-opacity': 0.7,
-        'transition-property': 'background-color, border-color, shadow-blur, width, height',
-        'transition-duration': '0.2s',
+
+        // Thin coloured rim (no white — SVG handles the rim look)
+        'border-width': 0,
+        'border-opacity': 0,
+
+        'transition-property': 'shadow-blur, shadow-opacity, width, height, border-width',
+        'transition-duration': '0.18s',
       },
     },
     {
       selector: 'node:selected',
       style: {
-        'border-width': 2.5,
-        'border-color': '#ffffff',
-        'shadow-blur': 28,
-        'shadow-opacity': 0.85,
+        'border-width': 2,
+        'border-color': 'data(color)',
+        'border-opacity': 1,
+        'shadow-blur': 55,
+        'shadow-opacity': 1,
         'z-index': 20,
+      },
+    },
+    {
+      selector: 'node.highlighted',
+      style: {
+        'shadow-blur': 48,
+        'shadow-opacity': 0.85,
+        'z-index': 15,
       },
     },
     {
       selector: 'node.dimmed',
       style: {
-        opacity: 0.18,
-        'shadow-opacity': 0.05,
+        opacity: 0.14,
+        'shadow-opacity': 0.03,
       },
     },
     {
@@ -175,41 +226,39 @@ function buildStylesheet() {
       style: {
         width: 'data(weight)',
         'line-color': 'data(color)',
-        'line-opacity': 0.3,
+        'line-opacity': 0.25,
         'curve-style': 'bezier',
         'target-arrow-shape': 'none',
         'transition-property': 'line-opacity, width',
-        'transition-duration': '0.2s',
+        'transition-duration': '0.18s',
       },
     },
     {
       selector: 'edge.highlighted',
       style: {
-        'line-opacity': 0.85,
-        width: 2.5,
+        'line-opacity': 0.88,
+        width: 2.8,
         'z-index': 10,
       },
     },
     {
       selector: 'edge.dimmed',
       style: {
-        'line-opacity': 0.03,
+        'line-opacity': 0.02,
       },
     },
   ];
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-// Accepts: data (from App.js store — { nodes, links })
-//          selectedNode, onNodeSelect, onBackgroundClick, layout
 
 const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundClick }) => {
-  const cyRef = useRef(null);
-  const containerRef = useRef(null);
-  const timeoutsRef = useRef([]);
+  const cyRef           = useRef(null);
+  const containerRef    = useRef(null);
+  const timeoutsRef     = useRef([]);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [edgeCount, setEdgeCount] = useState(0);
+  const [nodeCount,  setNodeCount]  = useState(0);
+  const [edgeCount,  setEdgeCount]  = useState(0);
 
   const clearAllTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(id => clearTimeout(id));
@@ -224,7 +273,6 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Normalise — store uses `links`, handle both
     const rawNodes = data?.nodes || [];
     const rawEdges = data?.edges || data?.links || [];
 
@@ -236,48 +284,68 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       return;
     }
 
-    // ── 1. Assign cluster colour index ──────────────────────────────────────
+    // ── 1. Cluster colours ───────────────────────────────────────────────────
     const clusterSet = new Set(rawNodes.map(n => clusterKey(n)));
     const clusterKeys = Array.from(clusterSet);
     const clusterColorMap = {};
+    // Cache SVG per color so we don't regenerate for the same cluster
+    const svgCache = {};
     clusterKeys.forEach((k, i) => {
-      clusterColorMap[k] = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+      const color = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+      clusterColorMap[k] = color;
+      svgCache[k] = makeNodeSvg(color);
     });
 
-    // ── 2. Phyllotaxis centres ───────────────────────────────────────────────
-    const W = containerRef.current.offsetWidth || 800;
+    // ── 2. Phyllotaxis centres ────────────────────────────────────────────────
+    const W = containerRef.current.offsetWidth  || 800;
     const H = containerRef.current.offsetHeight || 600;
     const centers = computeClusterCenters(clusterKeys, W, H);
 
-    // ── 3. Track cluster membership ──────────────────────────────────────────
+    // ── 3. Degree pre-pass (count connections per node for size bonus) ────────
+    const degreeMap = {};
+    rawNodes.forEach(n => { degreeMap[String(n.id)] = 0; });
+    rawEdges.forEach(e => {
+      const s = String(e.source || e.from);
+      const t = String(e.target || e.to);
+      if (degreeMap[s] !== undefined) degreeMap[s]++;
+      if (degreeMap[t] !== undefined) degreeMap[t]++;
+    });
+    const maxDeg = Math.max(...Object.values(degreeMap), 1);
+
+    // ── 4. Track cluster membership ──────────────────────────────────────────
     const clusterMeta = {};
     clusterKeys.forEach(k => { clusterMeta[k] = []; });
 
-    // ── 4. Build elements with pre-positions ─────────────────────────────────
+    // ── 5. Build node elements ───────────────────────────────────────────────
     const elements = [];
 
     rawNodes.forEach(node => {
-      const id = String(node.id);
+      const id      = String(node.id);
       const cluster = clusterKey(node);
-      const center = centers[cluster] || { x: W / 2, y: H / 2 };
+      const center  = centers[cluster] || { x: W / 2, y: H / 2 };
       clusterMeta[cluster].push(id);
 
       const clusterSize = rawNodes.filter(n => clusterKey(n) === cluster).length;
       const idx = clusterMeta[cluster].length - 1;
-      const innerR = Math.min(70, Math.max(22, clusterSize * 8));
-      const angle = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
-      const jx = (Math.random() - 0.5) * 12;
-      const jy = (Math.random() - 0.5) * 12;
 
-      const quality = node.quality_score || node.quality || 5;
-      const nodeSize = Math.min(54, Math.max(18, 18 + quality * 2));
+      // Wider initial ring → nodes start more spread out, less fcose work needed
+      const innerR = Math.min(110, Math.max(38, clusterSize * 11));
+      const angle  = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
+      const jx = (Math.random() - 0.5) * 10;
+      const jy = (Math.random() - 0.5) * 10;
+
+      // Node size: quality (0-10) + slight degree bonus
+      const quality   = node.quality_score || node.quality || 5;
+      const degBonus  = (degreeMap[id] / maxDeg) * 10;  // 0-10 bonus
+      const nodeSize  = Math.min(66, Math.max(22, 22 + quality * 2.8 + degBonus));
 
       elements.push({
         group: 'nodes',
         data: {
           id,
-          label: node.title || node.name || id,
-          color: clusterColorMap[cluster],
+          label:   node.title || node.name || id,
+          color:   clusterColorMap[cluster],
+          bgImage: svgCache[cluster],
           cluster,
           size: nodeSize,
           rawData: node,
@@ -289,7 +357,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       });
     });
 
-    // Build a quick id→cluster lookup
+    // ── 6. Build edge elements ───────────────────────────────────────────────
     const nodeClusterMap = {};
     elements.forEach(el => {
       if (el.group === 'nodes') nodeClusterMap[el.data.id] = el.data.cluster;
@@ -300,7 +368,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       const tgt = String(edge.target || edge.to);
       if (!src || !tgt || src === tgt) return;
       const sameCluster = nodeClusterMap[src] === nodeClusterMap[tgt];
-      const srcCluster = nodeClusterMap[src] || 'default';
+      const srcCluster  = nodeClusterMap[src] || 'default';
 
       elements.push({
         group: 'edges',
@@ -308,10 +376,10 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
           id: `e${i}-${src}-${tgt}`,
           source: src,
           target: tgt,
-          weight: sameCluster ? 1.2 : 0.5,
-          color: sameCluster
+          weight:    sameCluster ? 1.4 : 0.6,
+          color:     sameCluster
             ? clusterColorMap[srcCluster]
-            : 'rgba(148,163,184,0.35)',
+            : 'rgba(148,163,184,0.3)',
           sameCluster,
         },
       });
@@ -320,12 +388,12 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     setNodeCount(rawNodes.length);
     setEdgeCount(rawEdges.length);
 
-    // ── 5. fixedNodeConstraint — anchor first node of each cluster ───────────
+    // ── 7. Fixed constraint — anchor first node of each cluster ──────────────
     const fixedNodeConstraint = clusterKeys
       .filter(k => clusterMeta[k].length > 0)
       .map(k => ({ nodeId: clusterMeta[k][0], position: centers[k] }));
 
-    // ── 6. Destroy old instance ──────────────────────────────────────────────
+    // ── 8. Destroy old instance ───────────────────────────────────────────────
     clearAllTimeouts();
     if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
 
@@ -338,27 +406,27 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       layout: { name: 'preset' },
       userZoomingEnabled: true,
       userPanningEnabled: true,
-      minZoom: 0.1,
+      minZoom: 0.08,
       maxZoom: 4,
-      wheelSensitivity: 0.3,
+      wheelSensitivity: 0.28,
     });
 
     cyRef.current = cy;
 
-    // ── 7. layoutstop attached BEFORE layout runs ─────────────────────────────
+    // ── 9. layoutstop ────────────────────────────────────────────────────────
     cy.one('layoutstop', () => {
       clearAllTimeouts();
       setIsLayoutRunning(false);
-      try { cy.fit(undefined, 60); } catch (_) {}
+      try { cy.fit(undefined, 70); } catch (_) {}
     });
 
     // Safety fallback
     track(setTimeout(() => {
       setIsLayoutRunning(false);
-      try { cy.fit(undefined, 60); } catch (_) {}
-    }, 8000));
+      try { cy.fit(undefined, 70); } catch (_) {}
+    }, 10000));
 
-    // ── 8. fcose layout ───────────────────────────────────────────────────────
+    // ── 10. fcose layout — tuned for minimal overlap ──────────────────────────
     if (rawNodes.length > 1) {
       cy.layout({
         name: 'fcose',
@@ -366,29 +434,41 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
         animate: false,
         randomize: false,
         fixedNodeConstraint,
-        idealEdgeLength: edge => edge.data('sameCluster') ? 45 : 200,
-        edgeElasticity: edge => edge.data('sameCluster') ? 0.08 : 0.45,
-        nodeRepulsion: () => 6500,
-        numIter: 2500,
+
+        // Longer edges = more breathing room between nodes
+        idealEdgeLength: edge => edge.data('sameCluster') ? 70 : 290,
+        edgeElasticity:  edge => edge.data('sameCluster') ? 0.12 : 0.42,
+
+        // High repulsion → nodes push away from each other aggressively
+        nodeRepulsion: () => 22000,
+
+        // More iterations → converges to a cleaner layout
+        numIter: 4000,
+
         tile: true,
-        tilingPaddingVertical: 30,
-        tilingPaddingHorizontal: 30,
-        gravity: 0.2,
-        gravityRange: 3.8,
+        tilingPaddingVertical:   50,
+        tilingPaddingHorizontal: 50,
+
+        // Lower gravity → clusters spread wider, less central clumping
+        gravity: 0.12,
+        gravityRange: 4.8,
       }).run();
     } else {
-      cy.fit(undefined, 60);
+      cy.fit(undefined, 70);
       setIsLayoutRunning(false);
       clearAllTimeouts();
     }
 
-    // ── 9. Interactions ───────────────────────────────────────────────────────
+    // ── 11. Interactions ─────────────────────────────────────────────────────
     cy.on('mouseover', 'node', e => {
-      const node = e.target;
-      const connectedEdges = node.connectedEdges();
-      const neighbors = connectedEdges.connectedNodes();
-      cy.elements().not(node).not(connectedEdges).not(neighbors).addClass('dimmed');
-      connectedEdges.addClass('highlighted');
+      const node         = e.target;
+      const connEdges    = node.connectedEdges();
+      const neighbors    = connEdges.connectedNodes();
+      cy.elements()
+        .not(node).not(connEdges).not(neighbors)
+        .addClass('dimmed');
+      connEdges.addClass('highlighted');
+      node.addClass('highlighted');
     });
 
     cy.on('mouseout', 'node', () => {
@@ -422,8 +502,10 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       if (node.length) {
         const edges = node.connectedEdges();
         edges.addClass('highlighted');
-        cyRef.current.elements().not(node).not(edges).not(edges.connectedNodes()).addClass('dimmed');
-        cyRef.current.animate({ center: { eles: node }, zoom: 1.5 }, { duration: 350 });
+        cyRef.current.elements()
+          .not(node).not(edges).not(edges.connectedNodes())
+          .addClass('dimmed');
+        cyRef.current.animate({ center: { eles: node }, zoom: 1.6 }, { duration: 320 });
       }
     }
   }, [selectedNode]);
