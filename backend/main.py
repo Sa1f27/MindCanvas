@@ -233,7 +233,7 @@ JSON only:"""
         if self.openai_client:
             try:
                 response = self.openai_client.chat.completions.create(
-                    model="gpt-5-nano-2025-08-07",
+                    model="gpt-4.1-nano-2025-04-14",
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=500,
                     temperature=0.1
@@ -839,7 +839,7 @@ Respond with a JSON object in this exact format:
         client = OpenAI(api_key=OPENAI_API_KEY)
         response = await asyncio.to_thread(
             client.chat.completions.create,
-            model="gpt-4.1-mini",
+            model="gpt-4.1-mini-2025-04-14",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.1,
@@ -859,7 +859,7 @@ Respond with a JSON object in this exact format:
             for node_id in cluster.get("node_ids", []):
                 id_to_cluster[str(node_id)] = (name, idx)
 
-        logger.info(f"✅ AI clustering (GPT-4.1-mini): {len(clusters_list)} clusters, {len(id_to_cluster)} nodes assigned")
+        logger.info(f"✅ AI clustering (gpt-4.1-mini-2025-04-14): {len(clusters_list)} clusters, {len(id_to_cluster)} nodes assigned")
         return id_to_cluster
 
     except Exception as e:
