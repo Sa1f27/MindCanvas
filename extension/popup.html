@@ -1,203 +1,357 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-    <title>MindCanvas History Exporter</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+  <meta charset="utf-8" />
+  <title>MindCanvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
 
-:root {
-  --bg-main: #1b1f24;
-  --bg-surface: #232931;
-  --accent: #3a8fd0;
-  --accent-hover: #5aa1dd;
-  --text-primary: #f1f3f5;
-  --text-muted: rgba(241, 243, 245, 0.6);
-  --radius: 12px;
-  --transition: 0.25s ease;
-}
+    :root {
+      --indigo: #6366f1;
+      --violet: #8b5cf6;
+      --cyan:   #06b6d4;
+      --emerald:#10b981;
+      --red:    #ef4444;
+      --bg:     #0c0c1a;
+      --surface:rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.07);
+      --text:   #e2e8f0;
+      --muted:  rgba(226,232,240,0.4);
+    }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+    body {
+      width: 340px;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: linear-gradient(160deg, #0b0b18 0%, #0d0d1e 55%, #0f0f22 100%);
+      color: var(--text);
+      overflow: hidden;
+      border-radius: 0;
+    }
 
-body {
-  width: 350px;
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-main);
-  color: var(--text-primary);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
+    /* ── Top gradient accent ───────────────────────────────── */
+    .accent-bar {
+      height: 2px;
+      background: linear-gradient(90deg, var(--indigo), var(--violet), var(--cyan));
+    }
 
-/* Header */
-.header {
-  background-color: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(10px);
-  padding: 20px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
+    /* ── Header / Brand ────────────────────────────────────── */
+    .header {
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(99,102,241,0.05);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-.header h1 {
-  font-size: 1.5rem;
-  color: var(--accent);
-}
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--indigo), var(--violet));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 10px rgba(99,102,241,0.35);
+      flex-shrink: 0;
+    }
 
-.header p {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #c4b5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
 
-/* Content */
-.content {
-  padding: 20px;
-}
+    .brand-text p {
+      font-size: 0.63rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
 
-.status-section {
-  background-color: var(--bg-surface);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 16px;
-  text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
+    /* ── Main content ──────────────────────────────────────── */
+    .content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
 
-.status-text {
-  font-size: 0.9rem;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-}
+    /* ── Status card ───────────────────────────────────────── */
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 14px 15px;
+    }
 
-.progress-container {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  height: 6px;
-  overflow: hidden;
-  margin-bottom: 8px;
-  display: none;
-}
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
 
-.progress-bar {
-  background: var(--accent);
-  height: 100%;
-  width: 0%;
-  transition: width var(--transition);
-  border-radius: 6px;
-}
+    .status-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+    }
 
-.stats {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
+    .status-dot-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
 
-/* Buttons */
-.btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #ffffff;
-  background-color: var(--accent);
-  margin-bottom: 12px;
-}
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background 0.3s;
+    }
 
-.btn:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
-}
+    .status-dot.online {
+      background: var(--emerald);
+      animation: pulse 2.5s ease infinite;
+    }
 
-.btn:disabled {
-  background-color: #444;
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
 
-/* Alerts */
-.alert {
-  padding: 10px;
-  border-radius: var(--radius);
-  margin-bottom: 12px;
-  font-size: 0.85rem;
-  text-align: center;
-}
+    #statusText {
+      font-size: 0.82rem;
+      color: var(--text);
+      line-height: 1.4;
+    }
 
-.alert-success {
-  background: rgba(56, 178, 172, 0.1);
-  color: #38b2ac;
-  border: 1px solid rgba(56, 178, 172, 0.2);
-}
+    /* ── Progress bar ──────────────────────────────────────── */
+    .progress-wrap {
+      margin-top: 10px;
+      display: none;
+    }
 
-.alert-error {
-  background: rgba(245, 101, 101, 0.1);
-  color: #f56565;
-  border: 1px solid rgba(245, 101, 101, 0.2);
-}
+    .progress-track {
+      height: 3px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
 
-.alert-info {
-  background: rgba(66, 153, 225, 0.1);
-  color: #4299e1;
-  border: 1px solid rgba(66, 153, 225, 0.2);
-}
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--indigo), var(--cyan));
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
 
-/* Footer */
-.footer {
-  padding: 14px 20px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
+    .progress-label {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
 
-    </style>
+    /* ── Stats ─────────────────────────────────────────────── */
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    #statsText {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── Alert ─────────────────────────────────────────────── */
+    #alertContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .alert {
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .alert-success {
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.2);
+      color: #34d399;
+    }
+
+    .alert-error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.2);
+      color: #f87171;
+    }
+
+    .alert-info {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.2);
+      color: #a5b4fc;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--indigo), var(--violet));
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(99,102,241,0.3);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 4px 18px rgba(99,102,241,0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 1px 6px rgba(99,102,241,0.25);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(226,232,240,0.7);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.16);
+      color: var(--text);
+    }
+
+    .btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      padding: 11px 20px 13px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.68rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .footer-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: 0.5;
+    }
+  </style>
 </head>
 
 <body>
-    <div class="header">
-        <h1>🧠 MindCanvas</h1>
-        <p>History Exporter</p>
-    </div>
+  <div class="accent-bar"></div>
 
-    <div class="content">
-        <div class="status-section">
-            <div class="status-text" id="statusText">Ready to export your browsing history</div>
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-bar" id="progressBar"></div>
-            </div>
-            <div class="stats" id="statsContainer">
-                <span id="statsText">Click Export to begin</span>
-            </div>
+  <div class="header">
+    <div class="brand-icon">✦</div>
+    <div class="brand-text">
+      <h1>MindCanvas</h1>
+      <p>AI Knowledge Graph</p>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Status Card -->
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Backend Status</span>
+        <div class="status-dot-wrap">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusLabel">Checking…</span>
         </div>
+      </div>
 
-        <div id="alertContainer"></div>
+      <div id="statusText">Connecting to MindCanvas backend…</div>
 
-        <button class="btn btn-primary" id="exportHistory">
-            Export History (24h)
-        </button>
+      <div class="progress-wrap" id="progressContainer">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressBar"></div>
+        </div>
+        <div class="progress-label" id="progressLabel"></div>
+      </div>
 
-        <button class="btn btn-secondary" id="openDashboard">
-            Open Dashboard
-        </button>
+      <div class="stats-row">
+        <span id="statsText">Ready</span>
+      </div>
     </div>
 
-    <div class="footer">
-        <div>Processing with AI • Secure & Private</div>
-    </div>
+    <!-- Alerts -->
+    <div id="alertContainer"></div>
 
-    <script type="module" src="popup.js"></script>
+    <!-- Export Button -->
+    <button class="btn btn-primary" id="exportHistory">
+      ⬆ Export History (24h)
+    </button>
+
+    <!-- Dashboard Button -->
+    <button class="btn btn-secondary" id="openDashboard">
+      Open Dashboard →
+    </button>
+
+  </div>
+
+  <div class="footer">
+    <span>Privacy-first</span>
+    <div class="footer-dot"></div>
+    <span>Data stays local</span>
+    <div class="footer-dot"></div>
+    <span>Secure</span>
+  </div>
+
+  <script type="module" src="popup.js"></script>
 </body>
-
 </html>

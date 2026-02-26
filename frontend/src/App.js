@@ -13,7 +13,7 @@ import ControlPanel from './components/ControlPanel';
 import NodeDetailsModal from './components/NodeDetailsModal';
 import SearchOverlay from './components/SearchOverlay';
 import SettingsPanel from './components/SettingsPanel';
-import StatisticsPanel from './components/StatisticsPanel';
+import LeftSidebar from './components/LeftSidebar';
 import PerformanceMonitor from './components/PerformanceMonitor';
 
 // Professional dark theme
@@ -107,14 +107,14 @@ const AppContainer = styled.div`
   width: 100vw;
   display: grid;
   grid-template-areas: "left-panel main-graph right-panel";
-  grid-template-columns: 220px 1fr 260px;
+  grid-template-columns: 272px 1fr 308px;
   grid-template-rows: 100vh;
-  gap: ${props => props.theme.spacing.sm};
-  padding: ${props => props.theme.spacing.sm};
+  gap: 10px;
+  padding: 10px;
   overflow: hidden;
 
   @media (max-width: 1400px) {
-    grid-template-columns: 200px 1fr 240px;
+    grid-template-columns: 252px 1fr 288px;
   }
 
   @media (max-width: 1100px) {
@@ -178,13 +178,12 @@ const SidePanel = styled(motion.div)`
 `;
 
 const ChatbotArea = styled(motion.div)`
-  border-radius: ${props => props.theme.borderRadius.lg};
-  overflow: hidden;
-  flex: 1;
-  min-height: 300px;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  height: 100%;
 `;
 
 
@@ -356,35 +355,6 @@ const ErrorToast = styled(motion.div)`
   }
 `;
 
-const PanelHeaderTitle = styled(motion.div)`
-  text-align: center;
-  background: rgba(99, 102, 241, 0.06);
-  backdrop-filter: blur(12px);
-  border-radius: ${props => props.theme.borderRadius.lg};
-  padding: 14px ${props => props.theme.spacing.md};
-  border: 1px solid rgba(99, 102, 241, 0.18);
-  margin-bottom: ${props => props.theme.spacing.sm};
-  margin-top: 0;
-
-  h1 {
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin-bottom: 2px;
-    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.5px;
-  }
-
-  .subtitle {
-    font-size: 0.7rem;
-    color: ${props => props.theme.colors.textSecondary};
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-`;
 
 const App = () => {
   // UI State
@@ -599,42 +569,18 @@ const App = () => {
           {backendConnected ? 'Backend Connected' : 'Backend Offline'}
         </StatusBanner>
 
-        {/* Left Panel - Statistics */}
+        {/* Left Panel - Unified Sidebar */}
         <SidePanel
           initial={{ x: -300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           style={{ gridArea: 'left-panel' }}
         >
-          <PanelHeaderTitle
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-          >
-            <h1>MindCanvas</h1>
-            <div className="subtitle">AI Knowledge Graph</div>
-          </PanelHeaderTitle>
-
-          <StatisticsPanel
-            title="Overview"
-            type="overview"
-            data={overviewStats}
+          <LeftSidebar
             stats={stats}
+            trending={trendingData}
+            recommendations={recommendationsData}
           />
-
-          <StatisticsPanel
-            title="Content Types"
-            type="contentTypes"
-            data={contentTypeData}
-          />
-
-          {trendingData.length > 0 && (
-            <StatisticsPanel
-              title="Categories"
-              type="trending"
-              trending={trendingData}
-            />
-          )}
         </SidePanel>
 
         {/* Main Graph Area */}
@@ -708,7 +654,7 @@ const App = () => {
           </AnimatePresence>
         </MainGraphArea>
 
-        {/* Right Panel - Analytics & Actions */}
+        {/* Right Panel - Chat */}
         <SidePanel
           initial={{ x: 300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -716,29 +662,13 @@ const App = () => {
           style={{ gridArea: 'right-panel' }}
         >
           <ChatbotArea
-            initial={{ y: 50, opacity: 0 }} /* Adjusted animation for panel context */
+            initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.45 }}
           >
             <ChatbotPanel graphData={graphData} />
           </ChatbotArea>
-          {recommendationsData.length > 0 && (
-            <StatisticsPanel
-              title="Recommendations"
-              type="recommendations"
-              data={recommendationsData}
-            />
-          )}
         </SidePanel>
-
-        {/* Chatbot Area - Fixed positioning */}
-        {/* <ChatbotArea
-          initial={{ y: 200, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          <ChatbotPanel graphData={graphData} />
-        </ChatbotArea> */}
 
         {/* Modals and Overlays */}
         <AnimatePresence>

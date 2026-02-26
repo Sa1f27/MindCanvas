@@ -1,26 +1,27 @@
 "use strict";
 
 // UI Elements
-let exportButton, dashboardButton, statusText, progressContainer, progressBar, alertContainer, statsText;
+let exportButton, dashboardButton, statusText, progressContainer, progressBar,
+    progressLabel, alertContainer, statsText, statusDot, statusLabel;
 
 // State management
 let isExporting = false;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize UI elements
-    exportButton = document.getElementById('exportHistory');
-    dashboardButton = document.getElementById('openDashboard');
-    statusText = document.getElementById('statusText');
+    exportButton      = document.getElementById('exportHistory');
+    dashboardButton   = document.getElementById('openDashboard');
+    statusText        = document.getElementById('statusText');
     progressContainer = document.getElementById('progressContainer');
-    progressBar = document.getElementById('progressBar');
-    alertContainer = document.getElementById('alertContainer');
-    statsText = document.getElementById('statsText');
+    progressBar       = document.getElementById('progressBar');
+    progressLabel     = document.getElementById('progressLabel');
+    alertContainer    = document.getElementById('alertContainer');
+    statsText         = document.getElementById('statsText');
+    statusDot         = document.getElementById('statusDot');
+    statusLabel       = document.getElementById('statusLabel');
 
-    // Bind event listeners
     exportButton.addEventListener('click', handleExportClick);
     dashboardButton.addEventListener('click', handleDashboardClick);
 
-    // Check backend connectivity on load
     checkBackendStatus();
 });
 
@@ -71,7 +72,7 @@ async function handleExportClick() {
  * Handle dashboard button click
  */
 function handleDashboardClick() {
-    chrome.tabs.create({ url: 'http://localhost:3000' });
+    chrome.tabs.create({ url: 'http://localhost:3030' });
 }
 
 /**
@@ -117,20 +118,24 @@ function sendMessageToBackground(message) {
  */
 async function checkBackendStatus() {
     try {
-        const response = await fetch('http://localhost:8090/', {
+        const response = await fetch('http://localhost:8090/api/health', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
-        
+
         if (response.ok) {
-            const data = await response.json();
-            showAlert(`Backend connected: ${data.message || 'MindCanvas Ready'}`, 'success');
+            statusDot.classList.add('online');
+            statusLabel.textContent = 'Connected';
+            statusText.textContent = 'Ready to export your browsing history.';
             updateStats('Backend ready for processing');
         } else {
             throw new Error('Backend not responding');
         }
     } catch (error) {
-        showAlert('Backend not running. Please start the server first.', 'error');
+        statusDot.classList.remove('online');
+        statusLabel.textContent = 'Offline';
+        statusText.textContent = 'Backend not running. Start the server first.';
+        showAlert('Cannot connect to backend on port 8090.', 'error');
         updateStats('Backend offline');
         exportButton.disabled = true;
     }
@@ -180,6 +185,7 @@ function hideProgress() {
 function updateProgress(percentage, message) {
     progressBar.style.width = `${percentage}%`;
     statusText.textContent = message;
+    if (progressLabel) progressLabel.textContent = `${percentage}%`;
 }
 
 /**
