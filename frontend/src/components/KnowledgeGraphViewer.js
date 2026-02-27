@@ -132,8 +132,8 @@ function computeClusterCenters(clusterKeys, W, H) {
   const cx = W / 2;
   const cy = H / 2;
   const goldenAngle = 137.508 * (Math.PI / 180);
-  // Wider spread so clusters start further apart → less initial overlap
-  const maxR = Math.min(W, H) * 0.36;
+  // Large spread so clusters stay well apart (no physics will move them)
+  const maxR = Math.min(W, H) * Math.max(0.38, Math.min(0.46, 0.3 + clusterKeys.length * 0.012));
   const centers = {};
 
   clusterKeys.forEach((key, i) => {
@@ -328,7 +328,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       const clusterSize = rawNodes.filter(n => clusterKey(n) === cluster).length;
       const idx = clusterMeta[cluster].length - 1;
 
-      // Wider initial ring → nodes start more spread out, less fcose work needed
+      // Ring radius scales with cluster size but stays compact enough to not overlap neighbors
       const innerR = Math.min(110, Math.max(38, clusterSize * 11));
       const angle  = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
       const jx = (Math.random() - 0.5) * 10;
@@ -388,11 +388,6 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     setNodeCount(rawNodes.length);
     setEdgeCount(rawEdges.length);
 
-    // ── 7. Fixed constraint — anchor first node of each cluster ──────────────
-    const fixedNodeConstraint = clusterKeys
-      .filter(k => clusterMeta[k].length > 0)
-      .map(k => ({ nodeId: clusterMeta[k][0], position: centers[k] }));
-
     // ── 8. Destroy old instance ───────────────────────────────────────────────
     clearAllTimeouts();
     if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
@@ -426,33 +421,9 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       try { cy.fit(undefined, 70); } catch (_) {}
     }, 10000));
 
-    // ── 10. fcose layout — tuned for minimal overlap ──────────────────────────
+    // ── 10. Preset layout — nodes stay at their ring positions, no physics ──────
     if (rawNodes.length > 1) {
-      cy.layout({
-        name: 'fcose',
-        quality: 'proof',
-        animate: false,
-        randomize: false,
-        fixedNodeConstraint,
-
-        // Longer edges = more breathing room between nodes
-        idealEdgeLength: edge => edge.data('sameCluster') ? 70 : 290,
-        edgeElasticity:  edge => edge.data('sameCluster') ? 0.12 : 0.42,
-
-        // High repulsion → nodes push away from each other aggressively
-        nodeRepulsion: () => 22000,
-
-        // More iterations → converges to a cleaner layout
-        numIter: 4000,
-
-        tile: true,
-        tilingPaddingVertical:   50,
-        tilingPaddingHorizontal: 50,
-
-        // Lower gravity → clusters spread wider, less central clumping
-        gravity: 0.12,
-        gravityRange: 4.8,
-      }).run();
+      cy.layout({ name: 'preset', fit: true, padding: 70 }).run();
     } else {
       cy.fit(undefined, 70);
       setIsLayoutRunning(false);

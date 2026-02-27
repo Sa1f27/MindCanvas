@@ -1,12 +1,8 @@
 beautifulsoup4
 fastapi
-groq
 httpx
 lxml
-langchain
-langchain-community
 langchain-openai
-langchain-text-splitters
 numpy
 openai
 pydantic
@@ -15,5 +11,4 @@ python-multipart
 scikit-learn
 sentence-transformers
 supabase
-tiktoken
 uvicorn
