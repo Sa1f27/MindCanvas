@@ -277,9 +277,9 @@ const Button = styled(motion.button)`
 `;
 
 const StatusBanner = styled(motion.div)`
-  position: fixed;
-  top: ${props => props.theme.spacing.md};
-  right: ${props => props.theme.spacing.md};
+  position: absolute;
+  top: 18px;
+  right: 18px;
   background: ${props => props.$connected ?
     'rgba(16, 185, 129, 0.12)' :
     'rgba(239, 68, 68, 0.12)'};
@@ -558,17 +558,6 @@ const App = () => {
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <AppContainer>
-        {/* Status Banner */}
-        <StatusBanner
-          $connected={backendConnected}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="status-dot" />
-          {backendConnected ? 'Backend Connected' : 'Backend Offline'}
-        </StatusBanner>
-
         {/* Left Panel - Unified Sidebar */}
         <SidePanel
           initial={{ x: -300, opacity: 0 }}
@@ -589,6 +578,17 @@ const App = () => {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {/* Status indicator — top-right of graph, away from chat panel */}
+          <StatusBanner
+            $connected={backendConnected}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="status-dot" />
+            {backendConnected ? 'Connected' : 'Offline'}
+          </StatusBanner>
+
           {/* Controls */}
           <ControlsPanel>
             <ControlPanel

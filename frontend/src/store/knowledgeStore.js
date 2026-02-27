@@ -492,6 +492,41 @@ export const useKnowledgeStore = create((set, get) => ({
     }
   },
 
+  // ==================== SAMPLE DATA ====================
+  loadSampleData: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const result = await apiCall('/load-sample-data', { method: 'POST' });
+      return result;
+    } catch (error) {
+      console.error('Load sample data failed:', error);
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  // ==================== CLEAR ALL DATA ====================
+  clearAllData: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      await apiCall('/reset', { method: 'DELETE' });
+      // Reset local graph state immediately
+      set({
+        graphData: { nodes: [], edges: [] },
+        content: [],
+        stats: {},
+        trending: [],
+        recommendations: [],
+        selectedNode: null,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Clear failed:', error);
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
   // ==================== EXPORT FUNCTIONALITY ====================
   exportKnowledgeGraph: async (format = 'json') => {
     try {

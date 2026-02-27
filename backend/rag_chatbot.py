@@ -9,6 +9,9 @@ import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dataclasses import dataclass
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
@@ -156,7 +159,7 @@ class _SimpleConversationMemory:
 class RAGChatbot:
     """Production-ready RAG chatbot with proper error handling."""
     
-    def __init__(self, db, openai_key: Optional[str] = None, groq_key: Optional[str] = None):
+    def __init__(self, db, openai_key: Optional[str] = None):
         if not openai_key:
             raise ValueError("OpenAI API key is required for RAG chatbot")
         

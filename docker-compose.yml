@@ -12,6 +12,7 @@ services:
         required: false
     volumes:
       - st_model_cache:/app/.st_cache
+      - ./sample:/app/sample:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/api/health')"]
       interval: 30s

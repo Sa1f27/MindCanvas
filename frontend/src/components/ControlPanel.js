@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useKnowledgeStore } from '../store/knowledgeStore';
 
-/* ── Toolbar wrapper — pill-shaped glass strip ──────────────────── */
+/* ── Toolbar wrapper ────────────────────────────────────────────── */
 const ControlContainer = styled(motion.div)`
   display: flex;
   align-items: center;
@@ -24,7 +24,7 @@ const Divider = styled.div`
   margin: 0 2px;
 `;
 
-/* ── Individual control button ──────────────────────────────────── */
+/* ── Standard button ────────────────────────────────────────────── */
 const Btn = styled(motion.button)`
   background: transparent;
   border: none;
@@ -44,20 +44,54 @@ const Btn = styled(motion.button)`
     background: rgba(99, 102, 241, 0.18);
     color: #a5b4fc;
   }
+  &:active  { background: rgba(99, 102, 241, 0.28); }
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+  &.active  { background: rgba(99, 102, 241, 0.22); color: #a5b4fc; }
+`;
 
-  &:active {
-    background: rgba(99, 102, 241, 0.28);
+/* ── Destructive (clear) button — red tint ──────────────────────── */
+const DangerBtn = styled(Btn)`
+  &:hover {
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
   }
+  &:active { background: rgba(239, 68, 68, 0.28); }
+  &.confirming {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    width: auto;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+`;
 
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
+const ConfirmYes = styled(motion.button)`
+  background: rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { background: rgba(239, 68, 68, 0.55); }
+`;
 
-  &.active {
-    background: rgba(99, 102, 241, 0.22);
-    color: #a5b4fc;
-  }
+const ConfirmNo = styled(motion.button)`
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(226, 232, 240, 0.55);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.1); color: #e2e8f0; }
 `;
 
 /* ── Layout dropdown ────────────────────────────────────────────── */
@@ -99,41 +133,13 @@ const MenuItem = styled.div`
   transition: background 0.15s;
   border-left: 2px solid transparent;
 
-  &:hover {
-    background: rgba(99, 102, 241, 0.12);
-    border-left-color: rgba(99, 102, 241, 0.4);
-  }
+  &:hover  { background: rgba(99,102,241,0.12); border-left-color: rgba(99,102,241,0.4); }
+  &.active { background: rgba(99,102,241,0.16); border-left-color: #6366f1; }
 
-  &.active {
-    background: rgba(99, 102, 241, 0.16);
-    border-left-color: #6366f1;
-  }
-
-  .item-icon {
-    font-size: 1.05rem;
-    width: 22px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .item-label {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: #e2e8f0;
-  }
-
-  .item-desc {
-    font-size: 0.75rem;
-    color: rgba(226, 232, 240, 0.42);
-    margin-top: 2px;
-    line-height: 1.3;
-  }
-
-  .check {
-    margin-left: auto;
-    font-size: 0.8rem;
-    color: #6366f1;
-  }
+  .item-icon  { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+  .item-label { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; }
+  .item-desc  { font-size: 0.75rem; color: rgba(226,232,240,0.42); margin-top: 2px; line-height: 1.3; }
+  .check      { margin-left: auto; font-size: 0.8rem; color: #6366f1; }
 `;
 
 /* ── Tooltip ────────────────────────────────────────────────────── */
@@ -174,7 +180,6 @@ const KbdTag = styled.span`
   color: rgba(226, 232, 240, 0.55);
 `;
 
-/* ── Spin animation for refresh ─────────────────────────────────── */
 const SpinIcon = styled.span`
   display: inline-block;
   animation: spin 0.8s linear infinite;
@@ -183,14 +188,18 @@ const SpinIcon = styled.span`
 
 /* ════════════════════════════════════════════════════════════════ */
 const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRefreshing }) => {
-  const [showLayout, setShowLayout] = useState(false);
-  const [hovered, setHovered]     = useState(null);
+  const [showLayout,    setShowLayout]    = useState(false);
+  const [hovered,       setHovered]       = useState(null);
+  const [confirmClear,  setConfirmClear]  = useState(false);
+  const [isClearing,    setIsClearing]    = useState(false);
+  const [isLoadingSample, setIsLoadingSample] = useState(false);
 
-  const { updateGraphSettings, refreshAllData, exportKnowledgeGraph } = useKnowledgeStore();
+  const { updateGraphSettings, refreshAllData, exportKnowledgeGraph, clearAllData, loadSampleData } =
+    useKnowledgeStore();
 
   const layouts = [
-    { id: 'fcose',  icon: '⬡', label: 'Force-Directed',  desc: 'Physics-based — clusters emerge naturally'   },
-    { id: 'dagre',  icon: '⧉', label: 'Hierarchical',     desc: 'Top-down hierarchy — shows knowledge flow'  },
+    { id: 'fcose', icon: '⬡', label: 'Force-Directed', desc: 'Physics-based — clusters emerge naturally'  },
+    { id: 'dagre', icon: '⧉', label: 'Hierarchical',    desc: 'Top-down hierarchy — shows knowledge flow' },
   ];
 
   const handleLayout = (id) => {
@@ -209,7 +218,33 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
     catch (e) { console.error('Export failed:', e); }
   };
 
-  const tip = (id, label, kbd) => hovered === id && (
+  const handleLoadSample = async () => {
+    setIsLoadingSample(true);
+    try {
+      await loadSampleData();
+      await refreshAllData();
+      onRefresh();
+    } catch (e) {
+      console.error('Load sample failed:', e);
+    } finally {
+      setIsLoadingSample(false);
+    }
+  };
+
+  const handleClearConfirmed = async () => {
+    setIsClearing(true);
+    setConfirmClear(false);
+    try {
+      await clearAllData();
+      onRefresh();
+    } catch (e) {
+      console.error('Clear failed:', e);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const tip = (id, label, kbd) => hovered === id && !confirmClear && (
     <Tip
       key="tip"
       initial={{ opacity: 0, y: 4 }}
@@ -302,6 +337,21 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         <AnimatePresence>{tip('export', 'Export Graph')}</AnimatePresence>
       </Btn>
 
+      {/* Load sample data */}
+      <Btn
+        whileTap={{ scale: 0.9 }}
+        disabled={isLoadingSample}
+        onClick={handleLoadSample}
+        onMouseEnter={() => setHovered('sample')}
+        onMouseLeave={() => setHovered(null)}
+        style={{ color: isLoadingSample ? '#a5b4fc' : undefined }}
+      >
+        {isLoadingSample ? <SpinIcon>↻</SpinIcon> : '⊕'}
+        <AnimatePresence>
+          {!isLoadingSample && tip('sample', 'Load Sample Data')}
+        </AnimatePresence>
+      </Btn>
+
       {/* Fullscreen */}
       <Btn
         whileTap={{ scale: 0.9 }}
@@ -315,6 +365,49 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         ⤢
         <AnimatePresence>{tip('fs', 'Fullscreen', 'F11')}</AnimatePresence>
       </Btn>
+
+      <Divider />
+
+      {/* Clear all — with inline confirmation */}
+      <AnimatePresence mode="wait">
+        {confirmClear ? (
+          <DangerBtn
+            key="confirm"
+            className="confirming"
+            as={motion.div}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1   }}
+            exit={{    opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.12 }}
+          >
+            Clear all?
+            <ConfirmYes
+              whileTap={{ scale: 0.92 }}
+              onClick={handleClearConfirmed}
+            >
+              Yes
+            </ConfirmYes>
+            <ConfirmNo
+              whileTap={{ scale: 0.92 }}
+              onClick={() => setConfirmClear(false)}
+            >
+              No
+            </ConfirmNo>
+          </DangerBtn>
+        ) : (
+          <DangerBtn
+            key="trash"
+            whileTap={{ scale: 0.9 }}
+            disabled={isClearing}
+            onClick={() => setConfirmClear(true)}
+            onMouseEnter={() => setHovered('clear')}
+            onMouseLeave={() => setHovered(null)}
+          >
+            {isClearing ? <SpinIcon>↻</SpinIcon> : '⊗'}
+            <AnimatePresence>{tip('clear', 'Clear All Nodes')}</AnimatePresence>
+          </DangerBtn>
+        )}
+      </AnimatePresence>
     </ControlContainer>
   );
 };

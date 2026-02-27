@@ -21,27 +21,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
 from openai import OpenAI
-from groq import Groq
-
-# Add LangChain imports
-from langchain_community.chat_models import ChatOpenAI
-from langchain_community.embeddings import OpenAIEmbeddings
-
-import asyncio
-import json
-import os
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
-from collections import defaultdict, Counter
-import numpy as np
+from dotenv import load_dotenv
+from collections import Counter
 
 # Import the fixed RAG chatbot and Supabase DB
 from rag_chatbot import RAGChatbot, ChatRequest, ChatResponse, ChatMessage
 from supabase_db import SimpleVectorDB, ContentItem, init_db
 
-# Configuration
+# Configuration — load from .env file directly
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # Simple settings
 BATCH_SIZE = 10
@@ -176,77 +165,87 @@ def extract_content(html: str, url: str, title: str) -> Dict[str, str]:
 # LLM Processing
 class LLMProcessor:
     def __init__(self):
-        self.groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
         self.openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
     
     async def process_content(self, content_items: List[Dict]) -> List[Dict]:
-        """Process content with LLM"""
+        """Process content with LLM in batches to minimise API calls."""
         results = []
-        
-        for item in content_items:
+        for i in range(0, len(content_items), BATCH_SIZE):
+            batch = content_items[i:i + BATCH_SIZE]
             try:
-                processed = await self._process_single_item(item)
-                if processed:
-                    results.append(processed)
+                batch_results = await self._process_batch(batch)
+                results.extend(batch_results)
             except Exception as e:
-                logger.error(f"Failed to process {item['url']}: {e}")
-                # Fallback to basic processing
-                results.append(self._basic_process(item))
-        
+                logger.error(f"Batch {i//BATCH_SIZE + 1} failed: {e}")
+                results.extend([self._basic_process(item) for item in batch])
         return results
-    
-    async def _process_single_item(self, item: Dict) -> Dict:
-        """Process single item with LLM"""
-        prompt = f"""Analyze this webpage and respond with JSON only:
 
-URL: {item['url']}
-Title: {item['title']}
-Content: {item['content']}
+    async def _process_batch(self, batch: List[Dict]) -> List[Dict]:
+        """Send a whole batch to OpenAI in one call and parse the JSON array response."""
+        # Truncate content per item so we stay within token limits
+        items_text = ""
+        for idx, item in enumerate(batch, 1):
+            snippet = item['content'][:400].replace('\n', ' ')
+            items_text += (
+                f"\n--- Item {idx} ---\n"
+                f"URL: {item['url']}\n"
+                f"Title: {item['title']}\n"
+                f"Content: {snippet}\n"
+            )
 
-Response format:
+        prompt = f"""Analyze each webpage below and return a JSON object with an "items" array — one entry per webpage, in the same order.
+
+{items_text}
+
+Return a JSON object in this exact shape:
 {{
-    "title": "cleaned title",
-    "summary": "2-3 sentence summary",
-    "content_type": "Article|Tutorial|Documentation|News|Blog",
-    "key_topics": ["topic1", "topic2", "topic3"]
+  "items": [
+    {{
+      "title": "cleaned title",
+      "summary": "2-3 sentence summary",
+      "content_type": "Article|Tutorial|Documentation|News|Blog",
+      "key_topics": ["topic1", "topic2", "topic3"]
+    }}
+  ]
 }}
 
-JSON only:"""
+The "items" array must have exactly {len(batch)} entries."""
 
-        # Try Groq first
-        if self.groq_client:
-            try:
-                response = self.groq_client.chat.completions.create(
-                    model="meta-llama/llama-4-maverick-17b-128e-instruct",
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=500,
-                    temperature=0.1
-                )
-                
-                result = response.choices[0].message.content.strip()
-                return self._parse_llm_response(item, result, 'groq')
-                
-            except Exception as e:
-                logger.warning(f"Groq failed: {e}")
-        
-        # Fallback to OpenAI
         if self.openai_client:
             try:
                 response = self.openai_client.chat.completions.create(
                     model="gpt-4.1-nano-2025-04-14",
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=500,
-                    temperature=0.1
+                    max_tokens=150 * len(batch),
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
                 )
-                
-                result = response.choices[0].message.content.strip()
-                return self._parse_llm_response(item, result, 'openai')
-                
+                raw = response.choices[0].message.content.strip()
+                return self._parse_batch_response(batch, raw)
             except Exception as e:
-                logger.warning(f"OpenAI failed: {e}")
-        
-        # Basic fallback
-        return self._basic_process(item)
+                logger.warning(f"OpenAI batch failed: {e}")
+
+        return [self._basic_process(item) for item in batch]
+
+    def _parse_batch_response(self, batch: List[Dict], response: str) -> List[Dict]:
+        """Parse a json_object response containing an 'items' array."""
+        try:
+            parsed_obj = json.loads(response)
+            parsed = parsed_obj.get("items", [])
+            if not isinstance(parsed, list):
+                raise ValueError("'items' is not a list")
+        except Exception as e:
+            logger.error(f"Failed to parse batch LLM response: {e}")
+            return [self._basic_process(item) for item in batch]
+
+        results = []
+        for i, item in enumerate(batch):
+            if i < len(parsed):
+                results.append(self._parse_llm_response(item, json.dumps(parsed[i]), 'openai'))
+            else:
+                logger.warning(f"Batch response missing item {i+1}, using basic fallback")
+                results.append(self._basic_process(item))
+        return results
     
     def _parse_llm_response(self, item: Dict, response: str, method: str) -> Dict:
         """Parse LLM JSON response"""
@@ -437,7 +436,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize RAG chatbot with better error handling
     try:
-        rag_chatbot = RAGChatbot(db, OPENAI_API_KEY, GROQ_API_KEY)
+        rag_chatbot = RAGChatbot(db, OPENAI_API_KEY)
         logger.info("✅ RAG Chatbot initialized successfully")
     except Exception as e:
         logger.error(f"❌ RAG Chatbot initialization failed: {e}")
@@ -605,22 +604,11 @@ async def chat_health_check():
             logger.error(f"Chat health DB check failed: {e}")
             db_connection_ok = False
 
-    # Check if embeddings can be *configured* (not actually generating one)
-    embeddings_configured_in_rag = False
-    if rag_initialized and hasattr(rag_chatbot, 'embeddings') and rag_chatbot.embeddings:
-        # Check if API key is set for the OpenAI embedder
-        if isinstance(rag_chatbot.embeddings, OpenAIEmbeddings):
-            if rag_chatbot.embeddings.openai_api_key:
-                embeddings_configured_in_rag = True
-        else: # For other embedders like SentenceTransformer
-             embeddings_configured_in_rag = True
-
     status = "healthy"
     components_status = {
-        "openai_api_configured": "ok" if openai_configured else "warning", # API key might not be needed if Groq is primary
+        "openai_api_configured": "ok" if openai_configured else "warning",
         "rag_chatbot_initialized": "ok" if rag_initialized else "error",
         "database_connection": "ok" if db_connection_ok else "error",
-        "rag_embeddings_configured": "ok" if embeddings_configured_in_rag else "warning" # Embeddings might be optional for some chat modes
     }
 
     # Determine overall status
@@ -791,46 +779,64 @@ async def get_recommendations(limit: int = 10):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _ai_clustering(items: list) -> dict:
+async def _ai_graph_structure(items: list) -> dict:
     """
-    AI-based clustering using GPT-4.1-mini with JSON mode.
-    Sends all node titles/topics to the model and gets back semantically
-    meaningful cluster assignments.
-    Returns dict: str(id) -> (cluster_name, cluster_int_id)
+    Single AI call that produces BOTH cluster assignments AND edges.
+    Returns {
+        "id_to_cluster":  { str(id): (cluster_name, cluster_int_id) },
+        "edges":          [ {"source": str, "target": str, "reason": str} ]
+    }
     """
     if not OPENAI_API_KEY:
-        logger.warning("No OpenAI API key — cannot use AI clustering")
-        return {}
+        logger.warning("No OpenAI API key — cannot use AI graph structure")
+        return {"id_to_cluster": {}, "edges": []}
 
-    # Build a compact description of each node for the prompt
     node_descriptions = []
     for item in items:
         topics = item.get('key_topics') or []
+        summary = (item.get('summary') or '')[:120].strip()
         node_descriptions.append({
             "id": str(item['id']),
             "title": item.get('title', ''),
+            "summary": summary,
             "topics": topics[:5],
             "type": item.get('content_type', ''),
         })
 
-    prompt = f"""You are a knowledge graph clustering expert. Given the following list of content nodes (each with an id, title, topics, and type), group them into meaningful semantic clusters.
+    prompt = f"""You are a knowledge graph architect. Given these content nodes, decide:
+1. How to cluster them into meaningful semantic groups.
+2. Which pairs of nodes should be connected by an edge.
 
-Rules:
-- Create between 3 and 15 clusters depending on how many distinct themes exist.
-- Each cluster name should be a short, descriptive label (2-4 words max), like "Python Programming", "Machine Learning", "Web Development", "SAP Administration", etc.
-- Every node MUST be assigned to exactly one cluster.
-- Group nodes by their actual semantic meaning — nodes about similar subjects go together.
-- Do NOT create generic clusters like "General" or "Miscellaneous" unless absolutely necessary.
+CLUSTERING RULES:
+- Create 3–12 clusters based on distinct themes.
+- Cluster name: short label (2–4 words), e.g. "Python Programming", "Machine Learning".
+- Every node must be in exactly one cluster.
+- Base decisions on title + summary, not just keywords.
+- Closely related nodes (e.g. two Python tutorials) MUST share a cluster.
+
+EDGE RULES:
+- Only connect nodes that share a meaningful semantic relationship.
+- Aim for 2–4 edges per node on average — not too sparse, not a hairball.
+- Prefer connecting nodes within the same cluster, but cross-cluster edges are fine when genuinely related.
+- Do NOT add edges just because nodes share a generic topic like "programming" or "learning".
+- Each edge must have a short reason (5–10 words).
 
 Nodes:
 {json.dumps(node_descriptions, indent=2)}
 
-Respond with a JSON object in this exact format:
+Respond with a single JSON object:
 {{
   "clusters": [
     {{
       "name": "Cluster Name",
       "node_ids": ["1", "5", "12"]
+    }}
+  ],
+  "edges": [
+    {{
+      "source": "1",
+      "target": "5",
+      "reason": "Both cover Python data structures"
     }}
   ]
 }}"""
@@ -842,16 +848,17 @@ Respond with a JSON object in this exact format:
             model="gpt-4.1-mini-2025-04-14",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
-            temperature=0.1,
-            max_tokens=2000,
+            temperature=0.0,
+            max_tokens=4000,
         )
 
         result = json.loads(response.choices[0].message.content)
         clusters_list = result.get("clusters", [])
+        edges_list    = result.get("edges", [])
 
         if not clusters_list:
-            logger.warning("AI clustering returned empty clusters")
-            return {}
+            logger.warning("AI graph structure returned empty clusters")
+            return {"id_to_cluster": {}, "edges": []}
 
         id_to_cluster = {}
         for idx, cluster in enumerate(clusters_list, 1):
@@ -859,12 +866,23 @@ Respond with a JSON object in this exact format:
             for node_id in cluster.get("node_ids", []):
                 id_to_cluster[str(node_id)] = (name, idx)
 
-        logger.info(f"✅ AI clustering (gpt-4.1-mini-2025-04-14): {len(clusters_list)} clusters, {len(id_to_cluster)} nodes assigned")
-        return id_to_cluster
+        # Validate edges — only keep pairs where both IDs exist
+        valid_ids = set(id_to_cluster.keys())
+        valid_edges = [
+            e for e in edges_list
+            if str(e.get("source")) in valid_ids and str(e.get("target")) in valid_ids
+               and str(e.get("source")) != str(e.get("target"))
+        ]
+
+        logger.info(
+            f"✅ AI graph (gpt-4.1-mini): {len(clusters_list)} clusters, "
+            f"{len(id_to_cluster)} nodes, {len(valid_edges)} edges"
+        )
+        return {"id_to_cluster": id_to_cluster, "edges": valid_edges}
 
     except Exception as e:
-        logger.error(f"AI clustering failed: {e}")
-        return {}
+        logger.error(f"AI graph structure failed: {e}")
+        return {"id_to_cluster": {}, "edges": []}
 
 
 def _normalize_topic(topic: str, all_topics_lower: list, first_word_counts: Counter) -> str:
@@ -1067,32 +1085,34 @@ async def export_knowledge_graph():
 
         items = response.data
 
-        # ── 1. Try AI-based clustering (GPT-4.1-mini) ────────────────────────────
-        id_to_cluster = {}    # str(id) → cluster_name
-        id_to_cluster_id = {} # str(id) → int
+        # ── 1. AI produces clusters + edges in one call ───────────────────────────
+        id_to_cluster = {}
+        id_to_cluster_id = {}
+        ai_edges = []
         used_method = "topic_specificity"
 
         try:
-            ai_result = await _ai_clustering(items)
-            if ai_result and len(ai_result) >= len(items) * 0.5:
-                # AI clustering succeeded and assigned at least half the nodes
-                for sid, (cname, cid) in ai_result.items():
+            ai_result = await _ai_graph_structure(items)
+            ai_id_to_cluster = ai_result.get("id_to_cluster", {})
+            if ai_id_to_cluster and len(ai_id_to_cluster) >= len(items) * 0.5:
+                for sid, (cname, cid) in ai_id_to_cluster.items():
                     id_to_cluster[sid] = cname
                     id_to_cluster_id[sid] = cid
+                ai_edges = ai_result.get("edges", [])
                 used_method = "ai_gpt4.1-mini"
-                logger.info(f"✅ AI clustering: {len(set(id_to_cluster.values()))} clusters")
+                logger.info(f"✅ AI graph: {len(set(id_to_cluster.values()))} clusters, {len(ai_edges)} edges")
         except Exception as e:
-            logger.warning(f"AI clustering failed: {e}")
+            logger.warning(f"AI graph structure failed: {e}")
 
-        # ── 2. Fallback to topic-specificity clustering ───────────────────────────
+        # ── 2. Fallback clustering (no AI edges) ──────────────────────────────────
         if used_method == "topic_specificity":
             topic_result = _topic_specificity_clustering(items)
             for sid, (cname, cid) in topic_result.items():
                 id_to_cluster[sid] = cname
                 id_to_cluster_id[sid] = cid
-            logger.info(f"✅ Topic clustering fallback: {len(set(id_to_cluster.values()))} semantic clusters")
+            logger.info(f"✅ Topic clustering fallback: {len(set(id_to_cluster.values()))} clusters")
 
-        # Fill any nodes not assigned by AI (if AI skipped some)
+        # Fill any nodes the AI skipped
         if used_method.startswith("ai_"):
             unassigned = [item for item in items if str(item['id']) not in id_to_cluster]
             if unassigned:
@@ -1102,14 +1122,13 @@ async def export_knowledge_graph():
                     id_to_cluster[sid] = cname
                     id_to_cluster_id[sid] = cid + max_id
 
-        # ── 3. Build nodes with cluster labels ──────────────────────────────────
+        # ── 3. Build nodes ────────────────────────────────────────────────────────
         nodes = []
         for item in items:
             sid = str(item['id'])
             topics = item.get('key_topics') or []
             cluster_name = id_to_cluster.get(sid) or (topics[0].title() if topics else 'General')
             cluster_id = id_to_cluster_id.get(sid, 0)
-
             node = {
                 "id": sid,
                 "name": item.get('title', f"Content {item['id']}"),
@@ -1130,60 +1149,51 @@ async def export_knowledge_graph():
                 "cluster_method": used_method,
             }
             nodes.append(node)
-        
-        # Create links based on shared topics
+
+        # ── 4. Build edge list from AI output ─────────────────────────────────────
+        node_cluster_map = {n["id"]: n["cluster"] for n in nodes}
+        seen_pairs = set()
         links = []
         link_id = 0
-        
-        for i, node1 in enumerate(nodes):
-            topics1 = set(node1.get('topics', []))
-            
-            for j, node2 in enumerate(nodes[i+1:], i+1):
-                topics2 = set(node2.get('topics', []))
-                shared_topics = topics1.intersection(topics2)
-                
-                # Create link if nodes share at least 1 topic
-                if len(shared_topics) >= 1:
-                    similarity = len(shared_topics) / max(len(topics1), len(topics2), 1)
-                    
-                    link = {
-                        "id": f"link_{link_id}",
-                        "source": node1["id"],
-                        "target": node2["id"],
-                        "shared_topics": list(shared_topics),
-                        "weight": len(shared_topics),
-                        "similarity": similarity
-                    }
-                    links.append(link)
-                    link_id += 1
-        
-        # Also create links based on same content type (weaker connections)
-        for i, node1 in enumerate(nodes):
-            for j, node2 in enumerate(nodes[i+1:], i+1):
-                # Skip if already connected by topics
-                if any(link['source'] == node1['id'] and link['target'] == node2['id'] for link in links):
+
+        if ai_edges:
+            # Use AI-generated edges directly
+            for e in ai_edges:
+                src, tgt = str(e.get("source")), str(e.get("target"))
+                pair = (min(src, tgt), max(src, tgt))
+                if pair in seen_pairs or src not in node_cluster_map or tgt not in node_cluster_map:
                     continue
-                
-                # Connect nodes of same content type with low similarity
-                if node1.get('content_type') == node2.get('content_type') and node1.get('content_type') != 'Unknown':
-                    link = {
-                        "id": f"link_{link_id}",
-                        "source": node1["id"],
-                        "target": node2["id"],
-                        "shared_topics": [],
-                        "weight": 1,
-                        "similarity": 0.2  # Low similarity for same-type connections
-                    }
-                    links.append(link)
-                    link_id += 1
-        
-        # Limit links to prevent overcrowding (max 3 per node on average)
-        max_links = min(len(links), len(nodes) * 3)
-        if len(links) > max_links:
-            # Sort by similarity and keep the strongest connections
-            links.sort(key=lambda x: x['similarity'], reverse=True)
-            links = links[:max_links]
-        
+                seen_pairs.add(pair)
+                same = node_cluster_map[src] == node_cluster_map[tgt]
+                links.append({
+                    "id": f"link_{link_id}",
+                    "source": src,
+                    "target": tgt,
+                    "shared_topics": [e.get("reason", "")],
+                    "weight": 2 if same else 1,
+                    "similarity": 0.8 if same else 0.5,
+                    "same_cluster": same,
+                })
+                link_id += 1
+        else:
+            # Fallback: connect same-cluster pairs (topic_specificity path, no AI)
+            cluster_to_nodes = {}
+            for node in nodes:
+                cluster_to_nodes.setdefault(node["cluster"], []).append(node["id"])
+            for nids in cluster_to_nodes.values():
+                for ii, nid1 in enumerate(nids):
+                    for nid2 in nids[ii+1:]:
+                        pair = (min(nid1, nid2), max(nid1, nid2))
+                        if pair not in seen_pairs:
+                            seen_pairs.add(pair)
+                            links.append({
+                                "id": f"link_{link_id}",
+                                "source": nid1, "target": nid2,
+                                "shared_topics": [], "weight": 1,
+                                "similarity": 0.3, "same_cluster": True,
+                            })
+                            link_id += 1
+
         graph_data = {
             "nodes": nodes,
             "links": links,
@@ -1236,6 +1246,23 @@ async def reset_database():
             "status": "success",
             "message": "Database reset successfully"
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/load-sample-data")
+async def load_sample_data():
+    """Load bundled sample data (same as running load_sample_data.ps1)"""
+    import pathlib
+    sample_path = pathlib.Path(__file__).parent / "sample" / "sample_data.json"
+    if not sample_path.exists():
+        raise HTTPException(status_code=404, detail="sample_data.json not found")
+    try:
+        with open(sample_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        items = [HistoryItem(**entry) for entry in raw]
+        # Reuse the existing ingest endpoint logic
+        result = await ingest_history(items)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
