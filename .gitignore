@@ -1,14 +1,25 @@
+# Python
 venv/
+.venv/
 __pycache__/
 *.pyc
-backend/.env
-yui/
-package-lock.json
-.DS_Store
-.vscode/
-package.json
+.pytest_cache/
+
+# Secrets/env
 .env
+backend/.env
+!.env.example
+!backend/.env.example
+
+# Node/build outputs
 node_modules/
-yarn.lock
-npm-debug.log
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+npm-debug.log*
+yarn-error.log*
+
+# Editor/OS
+.vscode/
+.DS_Store
 .claude/
