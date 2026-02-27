@@ -639,6 +639,14 @@ const App = () => {
             </EmptyGraphState>
           )}
 
+          {/* Performance Monitor */}
+          <PerformanceMonitor
+            isVisible={showPerformanceMonitor}
+            nodeCount={analytics.nodeCount}
+            edgeCount={analytics.edgeCount}
+            placement="graph"
+          />
+
           {/* Loading Overlay */}
           <AnimatePresence>
             {isLoading && (
@@ -702,13 +710,6 @@ const App = () => {
             />
           )}
         </AnimatePresence>
-
-        {/* Performance Monitor */}
-        <PerformanceMonitor
-          isVisible={showPerformanceMonitor}
-          nodeCount={analytics.nodeCount}
-          edgeCount={analytics.edgeCount}
-        />
 
         {/* Error Display */}
         <AnimatePresence>

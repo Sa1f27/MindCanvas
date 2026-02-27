@@ -132,8 +132,10 @@ function computeClusterCenters(clusterKeys, W, H) {
   const cx = W / 2;
   const cy = H / 2;
   const goldenAngle = 137.508 * (Math.PI / 180);
-  // Large spread so clusters stay well apart (no physics will move them)
-  const maxR = Math.min(W, H) * Math.max(0.38, Math.min(0.46, 0.3 + clusterKeys.length * 0.012));
+  // Spread must be large enough so cluster rings don't overlap.
+  // Phyllotaxis min-neighbour distance ≈ maxR * sqrt(2/n).
+  // We need: 2 * maxInnerR < maxR * sqrt(2/n)  →  maxR grows with n.
+  const maxR = Math.min(W, H) * Math.max(0.44, Math.min(0.58, 0.34 + clusterKeys.length * 0.016));
   const centers = {};
 
   clusterKeys.forEach((key, i) => {
@@ -168,16 +170,16 @@ function buildStylesheet() {
 
         // Label
         label: 'data(label)',
-        'font-size': '10px',
+        'font-size': '9px',
         'font-family': "'Inter', 'Segoe UI', sans-serif",
         'font-weight': '600',
         color: '#e2e8f0',
         'text-valign': 'bottom',
         'text-halign': 'center',
-        'text-margin-y': 6,
-        'text-outline-width': 2.5,
+        'text-margin-y': 4,
+        'text-outline-width': 2,
         'text-outline-color': 'rgba(6,6,16,0.9)',
-        'text-max-width': '88px',
+        'text-max-width': '76px',
         'text-wrap': 'ellipsis',
 
         // Outer aura / glow — coloured atmospheric halo
@@ -328,16 +330,18 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       const clusterSize = rawNodes.filter(n => clusterKey(n) === cluster).length;
       const idx = clusterMeta[cluster].length - 1;
 
-      // Ring radius scales with cluster size but stays compact enough to not overlap neighbors
-      const innerR = Math.min(110, Math.max(38, clusterSize * 11));
+      // Ring radius: small enough that adjacent cluster rings don't collide.
+      // Rule: innerR_max < maxR * sqrt(2/n) / 2 - buffer
+      // Empirically safe: cap at 55px, scale by 5.5px/node
+      const innerR = Math.min(55, Math.max(20, clusterSize * 5.5));
       const angle  = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
-      const jx = (Math.random() - 0.5) * 10;
-      const jy = (Math.random() - 0.5) * 10;
+      const jx = (Math.random() - 0.5) * 6;
+      const jy = (Math.random() - 0.5) * 6;
 
-      // Node size: quality (0-10) + slight degree bonus
+      // Node size: quality-scaled 16–46px so nodes stay readable but compact
       const quality   = node.quality_score || node.quality || 5;
-      const degBonus  = (degreeMap[id] / maxDeg) * 10;  // 0-10 bonus
-      const nodeSize  = Math.min(66, Math.max(22, 22 + quality * 2.8 + degBonus));
+      const degBonus  = (degreeMap[id] / maxDeg) * 8;   // 0-8 bonus
+      const nodeSize  = Math.min(46, Math.max(16, 16 + quality * 1.9 + degBonus * 0.5));
 
       elements.push({
         group: 'nodes',
