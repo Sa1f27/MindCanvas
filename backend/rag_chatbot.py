@@ -166,7 +166,6 @@ class RAGChatbot:
             raise ValueError("OpenAI API key is required for RAG chatbot")
         
         self.db = db
-        self.client = db.client
         self.openai_api_key = openai_key
         
         # Get model from environment with validation
@@ -327,14 +326,8 @@ The context from their knowledge base follows:"""
     async def _keyword_fallback(self, query: str, max_items: int) -> List[KnowledgeContext]:
         """Return top-quality content scored by keyword overlap with the query."""
         try:
-            response = await asyncio.to_thread(
-                lambda: self.db.client.table("processed_content")
-                .select("id, title, summary, content_type, key_topics, quality_score, url")
-                .order("quality_score", desc=True)
-                .limit(100)
-                .execute()
-            )
-            if not response.data:
+            items = await self.db.get_top_content(100)
+            if not items:
                 return []
 
             stop_words = {
@@ -347,7 +340,7 @@ The context from their knowledge base follows:"""
             query_words = {w for w in query.lower().split() if len(w) > 2 and w not in stop_words}
 
             scored = []
-            for item in response.data:
+            for item in items:
                 title   = item.get('title', '') or ''
                 summary = item.get('summary', '') or ''
                 topics  = ' '.join(item.get('key_topics', []) or [])
@@ -520,45 +513,7 @@ URL: {item.url}
 
     async def get_suggested_questions(self, limit: int = 5) -> List[str]:
         """Generate suggested questions from content."""
-        try:
-            response = await asyncio.to_thread(
-                lambda: self.client.table("processed_content")
-                .select("title, key_topics, content_type")
-                .gte("quality_score", 7)
-                .order("quality_score", desc=True)
-                .limit(20)
-                .execute()
-            )
-            
-            if not response.data:
-                return self._get_default_suggestions()
-            
-            # Extract unique topics
-            topics = set()
-            for item in response.data:
-                if item.get("key_topics"):
-                    topics.update(item["key_topics"][:2])
-            
-            topics_list = list(topics)[:limit]
-            
-            # Generate questions
-            suggestions = []
-            if topics_list:
-                suggestions.append(f"What have I learned about {topics_list[0]}?")
-                if len(topics_list) > 1:
-                    suggestions.append(f"How does {topics_list[0]} relate to {topics_list[1]}?")
-            
-            suggestions.extend([
-                "What are the main topics in my knowledge base?",
-                "Show me high-quality content I've saved",
-                "What should I explore next based on my interests?"
-            ])
-            
-            return suggestions[:limit]
-            
-        except Exception as e:
-            logger.error(f"Failed to generate suggestions: {e}")
-            return self._get_default_suggestions()
+        return self._get_default_suggestions()[:limit]
     
     def _get_default_suggestions(self) -> List[str]:
         """Default suggestions when generation fails."""

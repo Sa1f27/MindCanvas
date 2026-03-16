@@ -349,10 +349,7 @@ async def process_urls(items: List[HistoryItem]) -> Dict[str, int]:
     
     for item in valid_items:
         try:
-            existing = await asyncio.to_thread(
-                db.client.table('processed_content').select('id').eq('url', item.url).execute
-            )
-            if existing.data:
+            if await db.url_exists(item.url):
                 existing_count += 1
                 continue
         except:
@@ -604,7 +601,7 @@ async def chat_health_check():
     # Lightweight DB check
     if db:
         try:
-            await asyncio.to_thread(db.client.table('processed_content').select('id').limit(1).execute)
+            await db.ping()
             db_connection_ok = True
         except Exception as e:
             logger.error(f"Chat health DB check failed: {e}")
@@ -637,14 +634,9 @@ async def chat_health_check():
 async def get_content(limit: int = 100):
     """Get processed content"""
     try:
-        response = await asyncio.to_thread(
-            db.client.table('processed_content').select(
-                'id, url, title, summary, content_type, key_topics, quality_score, processing_method'
-            ).order('quality_score', desc=True).limit(limit).execute
-        )
-        
+        rows = await db.get_content_list(limit)
         content = []
-        for row in response.data or []:
+        for row in rows:
             content.append({
                 "id": row['id'],
                 "url": row['url'],
@@ -655,9 +647,9 @@ async def get_content(limit: int = 100):
                 "quality_score": row['quality_score'],
                 "processing_method": row['processing_method']
             })
-        
+
         return {"content": content, "total": len(content)}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -679,16 +671,9 @@ async def semantic_search(request: SearchRequest):
 async def text_search(q: str, limit: int = 50):
     """Basic text search"""
     try:
-        response = await asyncio.to_thread(
-            db.client.table('processed_content').select(
-                'id, url, title, summary, content_type, key_topics, quality_score'
-            ).or_(
-                f'title.ilike.%{q}%, summary.ilike.%{q}%' # Note: for multiple fields, Supabase might need a specific function or view
-            ).limit(limit).execute
-        )
-        
+        rows = await db.text_search(q, limit)
         results = []
-        for row in response.data or []:
+        for row in rows:
             results.append({
                 "id": row['id'],
                 "url": row['url'],
@@ -698,7 +683,7 @@ async def text_search(q: str, limit: int = 50):
                 "key_details": row['key_topics'] or [],
                 "quality_score": row['quality_score']
             })
-        
+
         return {
             "results": results,
             "total": len(results),
@@ -760,15 +745,9 @@ async def get_analytics():
 async def get_recommendations(limit: int = 10):
     """Get content recommendations"""
     try:
-        # Just return high-quality recent content
-        response = await asyncio.to_thread(
-            db.client.table('processed_content').select(
-                'id, url, title, summary, content_type, quality_score'
-            ).gte('quality_score', 7).order('quality_score', desc=True).limit(limit).execute
-        )
-        
+        rows = await db.get_recommendations(limit)
         recommendations = []
-        for row in response.data or []:
+        for row in rows:
             recommendations.append({
                 "id": row['id'],
                 "url": row['url'],
@@ -777,7 +756,7 @@ async def get_recommendations(limit: int = 10):
                 "content_type": row['content_type'],
                 "quality_score": row['quality_score']
             })
-        
+
         return {
             "recommendations": recommendations,
             "total": len(recommendations)
@@ -1032,28 +1011,18 @@ async def reindex_embeddings():
     if not db:
         raise HTTPException(status_code=503, detail="Database not available")
     try:
-        # Fetch nodes without embeddings
-        response = await asyncio.to_thread(
-            db.client.table('processed_content').select(
-                'id, title, summary'
-            ).execute
-        )
-        if not response.data:
+        items_to_reindex = await db.get_all_for_reindex()
+        if not items_to_reindex:
             return {"reindexed": 0, "message": "No content found"}
 
         updated = 0
         failed = 0
-        for item in response.data:
+        for item in items_to_reindex:
             try:
                 text = f"{item.get('title', '')} {item.get('summary', '')}"
                 embedding = await db.generate_embedding(text, use_openai=bool(OPENAI_API_KEY))
                 if embedding:
-                    await asyncio.to_thread(
-                        db.client.table('processed_content')
-                        .update({'embedding': embedding})
-                        .eq('id', item['id'])
-                        .execute
-                    )
+                    await db.update_embedding(item['id'], embedding)
                     updated += 1
             except Exception as e:
                 logger.warning(f"Failed to embed node {item['id']}: {e}")
@@ -1073,13 +1042,9 @@ async def export_knowledge_graph(force: bool = False):
     import time
     try:
         # Get all content from database
-        response = await asyncio.to_thread(
-            db.client.table('processed_content').select(
-                'id, url, title, summary, content_type, key_topics, quality_score, processing_method, visit_timestamp'
-            ).execute
-        )
+        items = await db.get_all_for_export()
 
-        if not response.data or len(response.data) == 0:
+        if not items:
             return {
                 "nodes": [],
                 "links": [],
@@ -1089,8 +1054,6 @@ async def export_knowledge_graph(force: bool = False):
                     "exported_at": datetime.now().isoformat()
                 }
             }
-
-        items = response.data
 
         # ── Cache check: return cached result if fresh and node count unchanged ──
         now = time.time()
@@ -1263,9 +1226,7 @@ async def get_stats():
 async def reset_database():
     """Reset all data"""
     try:
-        await asyncio.to_thread(
-            db.client.table('processed_content').delete().neq('id', 0).execute
-        )
+        await db.delete_all()
         _graph_cache["result"] = None  # invalidate cache
         return {
             "status": "success",

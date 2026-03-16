@@ -7,7 +7,7 @@ const getPlacementStyles = (placement) => {
   if (placement === 'graph') {
     return `
       position: absolute;
-      top: 12px;
+      bottom: 12px;
       right: 12px;
       z-index: 1100;
     `;
