@@ -1,74 +1,152 @@
-# MindCanvas - AI Knowledge Graph
+# MindCanvas — AI Knowledge Graph
 
-> Transform your browsing history into an intelligent, searchable knowledge graph with AI-powered clustering and RAG chatbot
+> Transform your browsing history into an intelligent, visual knowledge network powered by semantic AI clustering and a RAG-based conversational assistant.
 
-![alt text](image.png)
-
-![alt text](image-5.png)
-
-![alt text](image-4.png)
-
-## Team
-
-**Lords Institute of Engineering and Technology**
-Department of Computer Science and Engineering (AI & ML)
-
-| #   | Name                     | Roll Number  | Role             |
-| --- | ------------------------ | ------------ | ---------------- |
-| 1   | Mohammed Huzaifah        | 160922748020 | Full Stack & AI  |
-| 2   | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG    |
-| 3   | Niyazuddin Mohammed      | 160922748039 | Frontend & Graph |
-| 4   | Mir Danish Ali           | 160922748023 | ML & Embeddings  |
-
-**Project Guide:** Mr. Khaja Pasha _(Assistant Professor, Dept. of CSE — AI & ML)_
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![License](https://img.shields.io/badge/License-MIT-F59E0B)](LICENSE)
 
 ---
 
-## Problem Statement
+## Table of Contents
 
-We consume vast amounts of content daily — articles, tutorials, documentation — but this knowledge remains scattered and disconnected. MindCanvas solves this by transforming your browsing data into an intelligent, visual knowledge network with AI-powered clustering and a conversational chatbot.
+1. [About](#about)
+2. [Screenshots](#screenshots)
+3. [Features](#features)
+4. [Tech Stack](#tech-stack)
+5. [Architecture](#architecture)
+6. [Quick Start](#quick-start-docker)
+7. [Environment Variables](#environment-variables)
+8. [API Reference](#api-reference)
+9. [Manual Installation](#manual-installation)
+10. [Troubleshooting](#troubleshooting)
+11. [Team](#team)
 
-## Features
+---
 
-### AI-Powered Clustering
+## About
 
-- **GPT-4.1-mini JSON Mode**: Nodes are clustered semantically using OpenAI's structured output — Python pages group with Python, SAP with SAP, etc.
-- **Smart Fallback**: Topic-specificity algorithm when the API is unavailable
+We consume vast amounts of content daily — articles, tutorials, research papers, documentation — but this knowledge remains scattered and disconnected. **MindCanvas** solves this by transforming browsing data into a visual, searchable knowledge graph with AI-powered semantic clustering and a context-aware conversational assistant.
 
-### Knowledge Graph Visualization
+**Core capabilities:**
+- Automatically groups related content into meaningful clusters using GPT-4.1-mini
+- Visualises relationships between topics as an interactive neural-style graph
+- Lets you query your own knowledge base in natural language via RAG
 
-- **Neural Brain Layout**: Phyllotaxis golden-angle cluster placement with fCoSE physics
-- **Glow Nodes**: Cytoscape.js with shadow-blur effects and cluster coloring
-- **Interactive**: Hover to highlight connections, click to inspect
-
-### RAG Chatbot
-
-- **Knowledge-Aware Chat**: Ask questions about your browsing history
-- **Source Citations**: Every answer references the content it draws from
-- **Multi-Model**: Supports gpt-4.1-mini-2025-04-14, gpt-5-mini-2025-08-07, Groq (Llama)
-
-### Chrome Extension
-
-- **One-Click Export**: Send browsing history to MindCanvas
-- **Privacy First**: Data stays on your machine, processed locally
+---
 
 ## Screenshots
 
-![Knowledge Graph](https://github.com/user-attachments/assets/74b813d9-681e-424d-b0c4-78eba019f4e8)
-_Interactive knowledge graph with AI semantic clustering_
+![Knowledge Graph](docs/images/image.png)
+*Interactive knowledge graph with AI semantic clustering*
 
-![AI Chat](https://github.com/user-attachments/assets/f00db503-d6ee-4828-8ce2-e7d42d707a69)
-_RAG-powered chatbot with source citations_
+![AI Chat Interface](docs/images/image-4.png)
+*RAG-powered chatbot with source citations and confidence scores*
+
+![Graph Clusters](docs/images/image-5.png)
+*Semantic cluster view with neural-style node layout*
+
+---
+
+## Features
+
+### AI-Powered Semantic Clustering
+- **GPT-4.1-mini JSON Mode** — structured LLM output assigns nodes to semantic clusters (Python pages group with Python, finance with finance, etc.)
+- **Smart Fallback** — topic-specificity algorithm activates when the API is unavailable, ensuring clustering always works
+
+### Interactive Knowledge Graph
+- **Neural Layout** — phyllotaxis golden-angle cluster placement with polygon/neuron/spiral node shapes per cluster size
+- **Cytoscape.js** — hardware-accelerated graph rendering with glow nodes, shadow-blur effects, and cluster coloring
+- **Interactive** — hover to highlight connections, click any node to inspect details and related content
+
+### RAG Chatbot
+- **Knowledge-Aware** — answers questions grounded in your actual browsing history and saved content
+- **Source Citations** — every response references the content it draws from with similarity scores
+- **Keyword Fallback** — gracefully handles queries even when vector search returns no results
+
+### Chrome Extension
+- **One-Click Export** — sends browsing history directly to MindCanvas
+- **Privacy First** — all data stays on your machine; nothing is sent to third-party servers
+
+---
+
+## Tech Stack
+
+### Backend
+| Technology | Purpose |
+|---|---|
+| **FastAPI** | Async Python web framework |
+| **SentenceTransformer** `all-MiniLM-L6-v2` | 384-dim local embeddings |
+| **OpenAI GPT-4.1-mini** | Semantic clustering & content analysis |
+| **asyncpg** + **pgvector** | High-performance PostgreSQL vector queries |
+| **scikit-learn** (DBSCAN) | Embedding-based clustering fallback |
+| **BeautifulSoup** | Web content extraction |
+
+### Frontend
+| Technology | Purpose |
+|---|---|
+| **React 18** + **Vite** | UI framework & fast dev/build tooling |
+| **Cytoscape.js** + **fcose** | Graph layout and visualisation |
+| **Styled Components** | Dark indigo theme with CSS-in-JS |
+| **Zustand** | Lightweight global state management |
+| **Framer Motion** | Animations and transitions |
+
+### Infrastructure
+| Technology | Purpose |
+|---|---|
+| **Docker** + **Docker Compose** | Container orchestration |
+| **PostgreSQL 16** + **pgvector** | Vector similarity search & content storage |
+
+---
+
+## Architecture
+
+```
+┌─────────────────────┐
+│   Chrome Extension  │  Exports browsing history via one-click
+└────────┬────────────┘
+         │ POST /api/ingest
+         ▼
+┌─────────────────────────────────────────┐
+│         FastAPI Backend  :8090          │
+│                                         │
+│  • BeautifulSoup  — content extraction  │
+│  • SentenceTransformer — embeddings     │
+│  • GPT-4.1-mini   — AI clustering       │
+│  • RAG pipeline   — chatbot context     │
+└────────┬────────────────────────────────┘
+         │ asyncpg + pgvector
+         ▼
+┌─────────────────────────────────────────┐
+│     PostgreSQL 16 + pgvector  :5432     │
+│                                         │
+│  • vector(384) similarity search        │
+│  • JSONB content & topic storage        │
+└────────┬────────────────────────────────┘
+         │ REST API
+         ▼
+┌─────────────────────────────────────────┐
+│       React Frontend  :3030             │
+│                                         │
+│  • Cytoscape.js  — graph visualisation  │
+│  • Zustand       — state management     │
+│  • RAG chatbot   — knowledge queries    │
+└─────────────────────────────────────────┘
+```
+
+---
 
 ## Quick Start (Docker)
 
 ### Prerequisites
 
-- Docker 20.10+ & Docker Compose 2.0+
+- Docker 20.10+ and Docker Compose 2.0+
 - OpenAI API Key
-- Supabase Account (free tier works)
 
-### 1. Clone & Setup
+### 1. Clone
 
 ```bash
 git clone https://github.com/Sa1f27/MindCanvas.git
@@ -77,110 +155,97 @@ cd MindCanvas
 
 ### 2. Configure Environment
 
-Copy the example and fill in your keys:
-
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Edit `backend/.env`:
+Edit `backend/.env` with your OpenAI key (see [Environment Variables](#environment-variables)).
 
-```env
-OPENAI_API_KEY=sk-your-key-here
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-anon-key
-
-# Optional
-GROQ_API_KEY=gsk-your-key-here
-```
-
-### 3. Run with Docker
+### 3. Start
 
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
+
+This starts three containers: `postgres` (pgvector), `backend` (FastAPI), and `frontend` (React/Vite). The backend waits for the database health check before starting.
 
 ### 4. Access
 
-- **Frontend**: http://localhost:3030
-- **Backend API**: http://localhost:8090
-- **API Docs**: http://localhost:8090/docs
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3030 |
+| Backend API | http://localhost:8090 |
+| Interactive API Docs | http://localhost:8090/docs |
 
 ### 5. Load Sample Data (Optional)
 
-For a quick demo with 35 curated URLs across 10 topics:
-
-```powershell
-# PowerShell
-.\sample\load_sample_data.ps1
-```
-
-Or with curl:
+Ingest 72 curated URLs across 18 topics for a quick demo:
 
 ```bash
+# Linux / macOS
 curl -X POST http://localhost:8090/api/ingest \
   -H "Content-Type: application/json" \
   -d @sample/sample_data.json
+
+# Windows PowerShell
+.\sample\load_sample_data.ps1
 ```
 
-## Architecture
+---
 
-```
-Chrome Extension
-  Exports browsing history
-         |
-         v
-FastAPI Backend (port 8090)
-  Content extraction (BeautifulSoup)
-  LLM analysis (Groq Llama / OpenAI)
-  SentenceTransformer embeddings (384-dim)
-  AI clustering (GPT-4.1-mini JSON mode)
-  RAG chatbot (LangChain)
-         |
-         v
-Supabase (PostgreSQL + pgvector)
-  Vector similarity search
-  Content storage
-         |
-         v
-React Frontend (port 3030, Vite)
-  Cytoscape.js graph (fCoSE layout)
-  Styled-components dark theme
-  Zustand state management
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | **Yes** | OpenAI API key for clustering and chat |
+| `DATABASE_URL` | No | PostgreSQL connection string (default: local Docker container) |
+| `OPENAI_MODEL` | No | Override default model (default: `gpt-4o-mini`) |
+
+Default `backend/.env`:
+
+```env
+OPENAI_API_KEY=sk-your-key-here
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/mindcanvas
 ```
 
-## Tech Stack
+> **Note:** The PostgreSQL database runs locally in Docker — no external database account is required.
 
-### Backend
+---
 
-- **FastAPI** — async Python web framework
-- **SentenceTransformer** (`all-MiniLM-L6-v2`) — 384-dim embeddings
-- **OpenAI gpt-4.1-mini-2025-04-14** — AI clustering & content analysis
-- **LangChain** — RAG chatbot orchestration
-- **Supabase** — PostgreSQL + pgvector
-- **scikit-learn** — DBSCAN clustering (when embeddings available)
+## API Reference
 
-### Frontend
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/ingest` | Import browsing history (batch URL list) |
+| `POST` | `/api/chat` | Chat with the RAG knowledge assistant |
+| `POST` | `/api/search/semantic` | Vector similarity search |
+| `GET` | `/api/knowledge-graph/export` | Full graph export (nodes + edges + clusters) |
+| `GET` | `/api/cluster` | Cluster metadata |
+| `GET` | `/api/content` | List all stored content |
+| `GET` | `/api/trending` | Trending topics by frequency |
+| `GET` | `/api/recommendations` | Personalised content recommendations |
+| `GET` | `/api/health` | System health check |
 
-- **React 18** + **Vite** — fast dev server & builds
-- **Cytoscape.js** + **cytoscape-fcose** — graph visualization
-- **Styled Components** — dark indigo theme
-- **Zustand** — lightweight state management
+Full interactive documentation: http://localhost:8090/docs
+
+---
 
 ## Manual Installation
 
 <details>
-<summary>Click to expand</summary>
+<summary>Expand for local development setup</summary>
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8090
+uvicorn main:app --host 0.0.0.0 --port 8090 --reload
 ```
+
+Requires a running PostgreSQL instance with the `vector` extension. Run `backend/init.sql` against your database to initialise the schema.
 
 ### Frontend
 
@@ -193,85 +258,46 @@ npm run dev
 ### Chrome Extension
 
 1. Open `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
+2. Enable **Developer mode**
+3. Click **Load unpacked**
 4. Select the `extension/` folder
 
 </details>
 
-## API Reference
-
-```
-POST /api/ingest              — Import browsing history
-POST /api/chat                — Chat with knowledge base
-POST /api/search/semantic     — Vector similarity search
-GET  /api/knowledge-graph/export — Export graph (nodes + links + clusters)
-GET  /api/cluster             — Get cluster info
-GET  /api/content             — List all content
-GET  /api/trending            — Trending topics
-GET  /api/recommendations     — Content recommendations
-GET  /api/health              — System health check
-```
-
-Full interactive docs at http://localhost:8090/docs
-
-## Supabase Setup
-
-Run this SQL in the Supabase SQL Editor:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-
-CREATE TABLE processed_content (
-    id BIGSERIAL PRIMARY KEY,
-    url TEXT UNIQUE NOT NULL,
-    title TEXT NOT NULL,
-    summary TEXT,
-    content TEXT,
-    content_type TEXT DEFAULT 'Web Content',
-    key_topics JSONB DEFAULT '[]',
-    quality_score INTEGER DEFAULT 5,
-    processing_method TEXT DEFAULT 'basic',
-    content_hash TEXT,
-    visit_timestamp TIMESTAMPTZ,
-    embedding vector(384),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE OR REPLACE FUNCTION match_processed_content(
-    query_embedding vector(384),
-    match_count int DEFAULT 10,
-    match_threshold float DEFAULT 0.3
-)
-RETURNS TABLE (
-    id bigint, url text, title text, summary text,
-    content_type text, key_topics jsonb, quality_score int,
-    similarity float
-)
-LANGUAGE sql STABLE AS $$
-    SELECT id, url, title, summary, content_type, key_topics, quality_score,
-           1 - (embedding <=> query_embedding) as similarity
-    FROM processed_content
-    WHERE 1 - (embedding <=> query_embedding) > match_threshold
-    ORDER BY (embedding <=> query_embedding)
-    LIMIT match_count;
-$$;
-```
+---
 
 ## Troubleshooting
 
-**Backend won't start**: Check `backend/.env` has valid `SUPABASE_URL`, `SUPABASE_KEY`, and `OPENAI_API_KEY`
-
-**Graph shows no nodes**: Make sure you've ingested data via the Chrome extension or sample data script
-
-**Clustering falls back to topics**: The OpenAI API key is missing or invalid — AI clustering requires it
-
-**Port conflict**: Change ports in `docker-compose.yml` (backend: 8090, frontend: 3030)
-
-## License
-
-MIT License - see [LICENSE](LICENSE)
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| Backend exits immediately | Missing `OPENAI_API_KEY` in `.env` | Add a valid key to `backend/.env` |
+| Graph shows no nodes | No data ingested yet | Load sample data or use the Chrome extension |
+| Clustering falls back to topics | Invalid or missing OpenAI key | AI clustering requires a working API key |
+| Port already in use | Another process on 8090/3030 | Change ports in `docker-compose.yml` |
+| `docker compose` not found | Old Docker version | Upgrade to Docker Compose v2 (`docker compose`, not `docker-compose`) |
 
 ---
 
-Built for the AI age | [GitHub](https://github.com/Sa1f27/MindCanvas)
+## Team
+
+**Lords Institute of Engineering and Technology**
+Department of Computer Science and Engineering (AI & ML)
+
+| # | Name | Roll No. | Role |
+|---|---|---|---|
+| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
+| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
+| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
+| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
+
+**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+<p align="center">Built for the AI age &nbsp;|&nbsp; <a href="https://github.com/Sa1f27/MindCanvas">GitHub</a></p>
