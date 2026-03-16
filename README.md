@@ -7,6 +7,24 @@
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](https://react.dev/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+---
+
+## Team
+
+**Lords Institute of Engineering and Technology**
+Department of Computer Science and Engineering (AI & ML)
+
+| # | Name | Roll Number | Role |
+|---|------|-------------|------|
+| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
+| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
+| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
+| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
+
+**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
+
+---
+
 ## Problem Statement
 
 We consume vast amounts of content daily — articles, tutorials, documentation — but this knowledge remains scattered and disconnected. MindCanvas solves this by transforming your browsing data into an intelligent, visual knowledge network with AI-powered clustering and a conversational chatbot.
