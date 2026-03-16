@@ -394,7 +394,10 @@ const NodeDetailsModal = ({ node, onClose, graphData }) => {
 
   const type    = node.type || node.content_type;
   const quality = node.quality || node.quality_score;
-  const topics  = node.topics || node.key_topics || [];
+  const rawTopics = node.topics || node.key_topics || [];
+  const topics = Array.isArray(rawTopics)
+    ? rawTopics
+    : (() => { try { const p = JSON.parse(rawTopics); return Array.isArray(p) ? p : []; } catch { return []; } })();
   const qc      = quality ? qualBg(quality) : null;
 
   return (

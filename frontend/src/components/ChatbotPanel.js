@@ -149,10 +149,10 @@ const UserMsgRow = styled(motion.div)`
 const UserBubble = styled.div`
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: #fff;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 16px 16px 4px 16px;
   max-width: 82%;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   line-height: 1.5;
   word-wrap: break-word;
   box-shadow: 0 2px 12px rgba(99, 102, 241, 0.22);
@@ -187,9 +187,9 @@ const AsstBubble = styled.div`
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(226, 232, 240, 0.9);
-  padding: 10px 13px;
+  padding: 9px 12px;
   border-radius: 4px 16px 16px 16px;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   line-height: 1.55;
   word-wrap: break-word;
 `;
@@ -341,7 +341,7 @@ const TextArea = styled.textarea`
   padding: 9px 12px;
   color: rgba(226, 232, 240, 0.9);
   font-family: inherit;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   line-height: 1.45;
   resize: none;
   min-height: 38px;
@@ -381,6 +381,70 @@ const SendBtn = styled(motion.button)`
 
   &:disabled { opacity: 0.38; cursor: not-allowed; }
 `;
+
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+const MdParagraph = styled.p`
+  margin: 0 0 6px 0;
+  &:last-child { margin-bottom: 0; }
+`;
+
+const MdOl = styled.ol`
+  margin: 4px 0 6px 0;
+  padding-left: 18px;
+  &:last-child { margin-bottom: 0; }
+`;
+
+const MdLi = styled.li`
+  margin-bottom: 5px;
+  line-height: 1.5;
+  &:last-child { margin-bottom: 0; }
+`;
+
+/** Parse inline markdown: **bold**, *italic*, `code` */
+function parseInline(text) {
+  const parts = [];
+  const re = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2] !== undefined) parts.push(<strong key={m.index}>{m[2]}</strong>);
+    else if (m[3] !== undefined) parts.push(<em key={m.index}>{m[3]}</em>);
+    else if (m[4] !== undefined) parts.push(<code key={m.index} style={{ fontSize: '0.75em', background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: 3 }}>{m[4]}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const out = [];
+  let listItems = [];
+
+  const flushList = () => {
+    if (listItems.length) {
+      out.push(<MdOl key={`ol-${out.length}`}>{listItems}</MdOl>);
+      listItems = [];
+    }
+  };
+
+  lines.forEach((line, i) => {
+    const numbered = line.match(/^(\d+)\.\s+(.*)/);
+    if (numbered) {
+      listItems.push(<MdLi key={i}>{parseInline(numbered[2])}</MdLi>);
+    } else {
+      flushList();
+      const trimmed = line.trim();
+      if (trimmed) {
+        out.push(<MdParagraph key={i}>{parseInline(trimmed)}</MdParagraph>);
+      }
+    }
+  });
+  flushList();
+  return out;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -607,7 +671,7 @@ const ChatbotPanel = ({ graphData }) => {
                 <AsstIcon>✦</AsstIcon>
                 <AsstBubbleWrap>
                   <AsstBubble>
-                    {msg.content}
+                    {renderMarkdown(msg.content)}
 
                     {msg.sources && msg.sources.length > 0 && (
                       <SourcesSection>

@@ -2,26 +2,25 @@
 
 > Transform your browsing history into an intelligent, searchable knowledge graph with AI-powered clustering and RAG chatbot
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://www.docker.com/)
-[![Python](https://img.shields.io/badge/Python-3.11-green?logo=python)](https://www.python.org/)
-[![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](https://react.dev/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![alt text](image.png)
 
----
+![alt text](image-5.png)
+
+![alt text](image-4.png)
 
 ## Team
 
 **Lords Institute of Engineering and Technology**
 Department of Computer Science and Engineering (AI & ML)
 
-| # | Name | Roll Number | Role |
-|---|------|-------------|------|
-| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
-| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
-| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
-| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
+| #   | Name                     | Roll Number  | Role             |
+| --- | ------------------------ | ------------ | ---------------- |
+| 1   | Mohammed Huzaifah        | 160922748020 | Full Stack & AI  |
+| 2   | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG    |
+| 3   | Niyazuddin Mohammed      | 160922748039 | Frontend & Graph |
+| 4   | Mir Danish Ali           | 160922748023 | ML & Embeddings  |
 
-**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
+**Project Guide:** Mr. Khaja Pasha _(Assistant Professor, Dept. of CSE — AI & ML)_
 
 ---
 
@@ -32,20 +31,24 @@ We consume vast amounts of content daily — articles, tutorials, documentation 
 ## Features
 
 ### AI-Powered Clustering
+
 - **GPT-4.1-mini JSON Mode**: Nodes are clustered semantically using OpenAI's structured output — Python pages group with Python, SAP with SAP, etc.
 - **Smart Fallback**: Topic-specificity algorithm when the API is unavailable
 
 ### Knowledge Graph Visualization
+
 - **Neural Brain Layout**: Phyllotaxis golden-angle cluster placement with fCoSE physics
 - **Glow Nodes**: Cytoscape.js with shadow-blur effects and cluster coloring
 - **Interactive**: Hover to highlight connections, click to inspect
 
 ### RAG Chatbot
+
 - **Knowledge-Aware Chat**: Ask questions about your browsing history
 - **Source Citations**: Every answer references the content it draws from
 - **Multi-Model**: Supports gpt-4.1-mini-2025-04-14, gpt-5-mini-2025-08-07, Groq (Llama)
 
 ### Chrome Extension
+
 - **One-Click Export**: Send browsing history to MindCanvas
 - **Privacy First**: Data stays on your machine, processed locally
 
@@ -149,6 +152,7 @@ React Frontend (port 3030, Vite)
 ## Tech Stack
 
 ### Backend
+
 - **FastAPI** — async Python web framework
 - **SentenceTransformer** (`all-MiniLM-L6-v2`) — 384-dim embeddings
 - **OpenAI gpt-4.1-mini-2025-04-14** — AI clustering & content analysis
@@ -157,6 +161,7 @@ React Frontend (port 3030, Vite)
 - **scikit-learn** — DBSCAN clustering (when embeddings available)
 
 ### Frontend
+
 - **React 18** + **Vite** — fast dev server & builds
 - **Cytoscape.js** + **cytoscape-fcose** — graph visualization
 - **Styled Components** — dark indigo theme

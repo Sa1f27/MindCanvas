@@ -1,5 +1,5 @@
 // src/App.js - Fixed layout with proper chatbot integration
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Component } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useKnowledgeStore } from './store/knowledgeStore';
@@ -15,6 +15,16 @@ import SearchOverlay from './components/SearchOverlay';
 import SettingsPanel from './components/SettingsPanel';
 import LeftSidebar from './components/LeftSidebar';
 import PerformanceMonitor from './components/PerformanceMonitor';
+
+class ModalErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err) { console.error('Modal render error:', err); }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
 
 // Professional dark theme
 const theme = {
@@ -693,18 +703,20 @@ const App = () => {
           )}
         </AnimatePresence>
 
-        <AnimatePresence>
-          {selectedNodeDetails && (
-            <NodeDetailsModal
-              node={selectedNodeDetails}
-              onClose={() => {
-                setSelectedNodeDetails(null);
-                setSelectedNode(null);
-              }}
-              graphData={graphData}
-            />
-          )}
-        </AnimatePresence>
+        <ModalErrorBoundary>
+          <AnimatePresence>
+            {selectedNodeDetails && (
+              <NodeDetailsModal
+                node={selectedNodeDetails}
+                onClose={() => {
+                  setSelectedNodeDetails(null);
+                  setSelectedNode(null);
+                }}
+                graphData={graphData}
+              />
+            )}
+          </AnimatePresence>
+        </ModalErrorBoundary>
 
         {/* Error Display */}
         <AnimatePresence>
