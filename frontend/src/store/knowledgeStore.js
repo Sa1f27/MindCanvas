@@ -238,12 +238,23 @@ export const useKnowledgeStore = create((set, get) => ({
       return processedData;
     } catch (error) {
       console.error('🕸️ Failed to load graph data:', error);
-      
-      // Fallback: try to create graph from content
+
+      // If we already have a good graph (AI-clustered with edges), keep it — don't
+      // overwrite it with a degraded fallback that has no cluster field and no edges.
+      const existing = get().graphData;
+      const hasGoodData = existing.nodes?.length > 0 && existing.links?.length > 0;
+      if (hasGoodData) {
+        console.warn('🔄 Keeping existing graph — API failed but we already have good data');
+        set({ isLoading: false });
+        return existing;
+      }
+
+      // First load only: try to create a minimal graph from content so the page
+      // isn't completely empty, but log clearly that this is a degraded view.
       try {
-        console.log('🔄 Attempting to create graph from content...');
+        console.log('🔄 First-load fallback: creating graph from content...');
         const content = get().allContent.length > 0 ? get().allContent : await get().loadContent();
-        
+
         if (content.length > 0) {
           const fallbackGraph = {
             nodes: content.map(item => ({
@@ -257,31 +268,19 @@ export const useKnowledgeStore = create((set, get) => ({
               summary: item.description || '',
               ...item
             })),
-            links: [] // No connections in fallback mode
+            links: []
           };
-          
-          console.log('🔄 Created fallback graph from content:', {
-            nodes: fallbackGraph.nodes.length,
-            links: fallbackGraph.links.length
-          });
-          
-          set({
-            graphData: fallbackGraph,
-            isLoading: false,
-            error: null
-          });
-          
+
+          console.warn('🔄 Fallback graph (no AI clusters, no edges):', fallbackGraph.nodes.length, 'nodes');
+          set({ graphData: fallbackGraph, isLoading: false, error: null });
           return fallbackGraph;
         }
       } catch (contentError) {
-        console.error('🔄 Failed to create fallback graph:', contentError);
+        console.error('🔄 Fallback also failed:', contentError);
       }
-      
+
       get().setError('Failed to load graph data: ' + error.message);
-      set({ 
-        isLoading: false,
-        graphData: { nodes: [], links: [] }
-      });
+      set({ isLoading: false });
       throw error;
     }
   },

@@ -433,14 +433,8 @@ const App = () => {
         if (isHealthy) {
           console.log('✅ Backend is healthy, loading all data...');
 
-          // Load all data in parallel
-          await Promise.allSettled([
-            refreshAllData(),
-            loadStats(),
-            loadContent(),
-            loadTrending(),
-            loadRecommendations()
-          ]);
+          // refreshAllData already calls all sub-loaders internally
+          await refreshAllData();
 
           console.log('✅ App initialization complete');
         } else {
@@ -453,7 +447,8 @@ const App = () => {
     };
 
     initializeApp();
-  }, [checkBackendHealth, refreshAllData, loadStats, loadContent, loadTrending, loadRecommendations]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount — store functions are stable Zustand references
 
   // Periodic health check
   useEffect(() => {

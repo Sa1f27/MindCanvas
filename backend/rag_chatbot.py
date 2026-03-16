@@ -26,10 +26,12 @@ MAX_CONTEXT_ITEMS = 10
 MIN_SIMILARITY_THRESHOLD = 0.1
 MAX_CONVERSATION_HISTORY = 20
 VALID_OPENAI_MODELS = [
-    "gpt-5-mini-2025-08-07",
-    "gpt-5-nano-2025-08-07",
+    "gpt-4o-mini",
+    "gpt-4o",
     "gpt-4.1-mini-2025-04-14",
     "gpt-4.1-nano-2025-04-14",
+    "gpt-4-turbo",
+    "gpt-3.5-turbo",
 ]
 
 # -----------------------------
@@ -168,10 +170,10 @@ class RAGChatbot:
         self.openai_api_key = openai_key
         
         # Get model from environment with validation
-        model_name = os.getenv("OPENAI_MODEL", "gpt-4.1-mini-2025-04-14")
+        model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         if model_name not in VALID_OPENAI_MODELS:
-            logger.warning(f"Model '{model_name}' not in validated list, using gpt-4.1-mini-2025-04-14")
-            model_name = "gpt-4.1-mini-2025-04-14"
+            logger.warning(f"Model '{model_name}' not in validated list, using gpt-4o-mini")
+            model_name = "gpt-4o-mini"
         
         try:
             self.llm = ChatOpenAI(
@@ -279,54 +281,105 @@ The context from their knowledge base follows:"""
         max_items: int,
         threshold: float,
     ) -> List[KnowledgeContext]:
-        """Retrieve relevant content with proper error handling."""
+        """Retrieve relevant content — tries vector search first, falls back to keyword search."""
         try:
             results = await self.db.semantic_search(query, max_items, threshold)
-            
-            if not results:
-                logger.info(f"No results found for query: {query[:80]}")
-                return []
-            
             context_items: List[KnowledgeContext] = []
-            
+
             for result in results:
                 try:
-                    # Fetch full content
-                    content_response = await asyncio.to_thread(
-                        lambda: self.db.client.table("processed_content")
-                        .select("content")
-                        .eq("id", result["id"])
-                        .execute()
-                    )
-                    
-                    content = ""
-                    if content_response.data and len(content_response.data) > 0:
-                        content = content_response.data[0].get("content", "") or ""
-                    
-                    # Validate and create context
-                    if content and len(content) > 20:  # Minimum content length
-                        context_item = KnowledgeContext(
-                            content=content,
-                            title=result.get("title", "Untitled"),
-                            url=result.get("url", ""),
-                            content_type=result.get("content_type", "Unknown"),
-                            quality_score=float(result.get("quality_score", 0.0)),
-                            similarity=float(result.get("similarity", 0.0)),
-                            summary=result.get("summary", ""),
-                        )
-                        context_items.append(context_item)
-                    else:
-                        logger.warning(f"Skipping item {result['id']} - insufficient content")
-                        
+                    # Use summary directly — avoid an extra N+1 query for 'content'
+                    # which is often empty or not stored in the DB.
+                    summary = result.get("summary", "") or ""
+                    content = summary  # summary is reliable; full content column may be empty
+
+                    if not content or len(content) < 5:
+                        logger.warning(f"Skipping item {result['id']} — no usable text")
+                        continue
+
+                    context_items.append(KnowledgeContext(
+                        content=content,
+                        title=result.get("title", "Untitled"),
+                        url=result.get("url", ""),
+                        content_type=result.get("content_type", "Unknown"),
+                        quality_score=float(result.get("quality_score", 0.0)),
+                        similarity=float(result.get("similarity", 0.0)),
+                        summary=summary,
+                    ))
                 except Exception as e:
                     logger.error(f"Failed to process result {result.get('id')}: {e}")
                     continue
-            
-            logger.info(f"Prepared {len(context_items)} valid context items")
-            return context_items
-            
+
+            if context_items:
+                logger.info(f"Vector search: {len(context_items)} context items")
+                return context_items
+
+            # ── Keyword fallback ───────────────────────────────────────────────────
+            # Vector search returned nothing (no embeddings or dimension mismatch).
+            # Score all stored content by keyword overlap so the AI always has context.
+            logger.info("Vector search empty — trying keyword fallback")
+            return await self._keyword_fallback(query, max_items)
+
         except Exception as e:
             logger.error(f"Context retrieval failed: {e}", exc_info=True)
+            return await self._keyword_fallback(query, max_items)
+
+    async def _keyword_fallback(self, query: str, max_items: int) -> List[KnowledgeContext]:
+        """Return top-quality content scored by keyword overlap with the query."""
+        try:
+            response = await asyncio.to_thread(
+                lambda: self.db.client.table("processed_content")
+                .select("id, title, summary, content_type, key_topics, quality_score, url")
+                .order("quality_score", desc=True)
+                .limit(100)
+                .execute()
+            )
+            if not response.data:
+                return []
+
+            stop_words = {
+                'the','a','an','is','are','was','were','in','on','at','to','for',
+                'of','and','or','my','i','me','did','what','how','when','where',
+                'which','who','have','has','been','about','with','from','this',
+                'that','be','do','does','some','any','all','their','they','we',
+                'you','your','tell','show','find','get','give','let','know',
+            }
+            query_words = {w for w in query.lower().split() if len(w) > 2 and w not in stop_words}
+
+            scored = []
+            for item in response.data:
+                title   = item.get('title', '') or ''
+                summary = item.get('summary', '') or ''
+                topics  = ' '.join(item.get('key_topics', []) or [])
+                blob    = f"{title} {summary} {topics}".lower()
+
+                score   = sum(1 for w in query_words if w in blob) if query_words else 0
+                quality = item.get('quality_score', 5) or 5
+                scored.append((score, quality, item))
+
+            scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+
+            context_items = []
+            for score, quality, item in scored[:max_items]:
+                summary = item.get('summary', '') or item.get('title', '')
+                if not summary:
+                    continue
+                sim = min(0.9, 0.3 + score * 0.1) if query_words else 0.3
+                context_items.append(KnowledgeContext(
+                    content=summary,
+                    title=item.get('title', 'Untitled'),
+                    url=item.get('url', ''),
+                    content_type=item.get('content_type', 'Unknown'),
+                    quality_score=float(quality),
+                    similarity=sim,
+                    summary=summary,
+                ))
+
+            logger.info(f"Keyword fallback: {len(context_items)} context items")
+            return context_items
+
+        except Exception as e:
+            logger.error(f"Keyword fallback failed: {e}", exc_info=True)
             return []
 
     async def _generate_response(

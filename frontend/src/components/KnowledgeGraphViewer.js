@@ -122,6 +122,93 @@ function clusterKey(node) {
   return 'General';
 }
 
+// ─── Organic cluster shape placer ────────────────────────────────────────────
+// Returns [{x,y}] for every node in the cluster using different geometric
+// patterns per size so clusters look like distinct neural structures, not
+// identical circles.
+
+function computeClusterShape(size, cx, cy, radius, clusterIdx) {
+  const positions = [];
+  // Unique starting rotation per cluster — no two clusters face the same way
+  const rot = (clusterIdx * 53 + 17) * (Math.PI / 180);
+  const jit = (s) => (Math.random() - 0.5) * 2 * s;
+
+  if (size === 1) {
+    positions.push({ x: cx + jit(4), y: cy + jit(4) });
+
+  } else if (size === 2) {
+    // Dumbbell along the rotation axis
+    const d = radius * 0.6;
+    positions.push({ x: cx - d * Math.cos(rot) + jit(5), y: cy - d * Math.sin(rot) + jit(5) });
+    positions.push({ x: cx + d * Math.cos(rot) + jit(5), y: cy + d * Math.sin(rot) + jit(5) });
+
+  } else if (size === 3) {
+    // Equilateral triangle
+    for (let i = 0; i < 3; i++) {
+      const ang = rot + (i / 3) * 2 * Math.PI - Math.PI / 2;
+      positions.push({ x: cx + radius * Math.cos(ang) + jit(7), y: cy + radius * Math.sin(ang) + jit(7) });
+    }
+
+  } else if (size === 4) {
+    // Diamond (rotated square)
+    for (let i = 0; i < 4; i++) {
+      const ang = rot + (i / 4) * 2 * Math.PI + Math.PI / 4;
+      positions.push({ x: cx + radius * Math.cos(ang) + jit(7), y: cy + radius * Math.sin(ang) + jit(7) });
+    }
+
+  } else if (size === 5) {
+    // Pentagon
+    for (let i = 0; i < 5; i++) {
+      const ang = rot + (i / 5) * 2 * Math.PI - Math.PI / 2;
+      positions.push({ x: cx + radius * Math.cos(ang) + jit(8), y: cy + radius * Math.sin(ang) + jit(8) });
+    }
+
+  } else if (size === 6) {
+    // Hexagon
+    for (let i = 0; i < 6; i++) {
+      const ang = rot + (i / 6) * 2 * Math.PI;
+      positions.push({ x: cx + radius * Math.cos(ang) + jit(8), y: cy + radius * Math.sin(ang) + jit(8) });
+    }
+
+  } else if (size <= 9) {
+    // Neuron: 1 central hub (soma) + irregular outer dendrite ring
+    positions.push({ x: cx + jit(5), y: cy + jit(5) }); // soma
+    const outer = size - 1;
+    for (let i = 0; i < outer; i++) {
+      const ang = rot + (i / outer) * 2 * Math.PI;
+      const r = radius * (0.85 + Math.random() * 0.25); // organic variation
+      positions.push({ x: cx + r * Math.cos(ang) + jit(9), y: cy + r * Math.sin(ang) + jit(9) });
+    }
+
+  } else if (size <= 16) {
+    // Double-ring: inner polygon + offset outer ring (two shells of a neural cluster)
+    const innerCount = Math.round(size * 0.36);
+    const outerCount = size - innerCount;
+    const innerR = radius * 0.45;
+    for (let i = 0; i < innerCount; i++) {
+      const ang = rot + (i / innerCount) * 2 * Math.PI;
+      positions.push({ x: cx + innerR * Math.cos(ang) + jit(7), y: cy + innerR * Math.sin(ang) + jit(7) });
+    }
+    for (let i = 0; i < outerCount; i++) {
+      const ang = rot + (Math.PI / outerCount) + (i / outerCount) * 2 * Math.PI;
+      const r = radius * (0.88 + Math.random() * 0.2);
+      positions.push({ x: cx + r * Math.cos(ang) + jit(10), y: cy + r * Math.sin(ang) + jit(10) });
+    }
+
+  } else {
+    // Golden-angle phyllotaxis spiral — organic sunflower / dendritic mass
+    const phi = 137.508 * (Math.PI / 180);
+    const scale = (radius * 1.2) / Math.sqrt(size);
+    for (let i = 0; i < size; i++) {
+      const r = scale * Math.sqrt(i + 1);
+      const ang = i * phi + rot;
+      positions.push({ x: cx + r * Math.cos(ang) + jit(6), y: cy + r * Math.sin(ang) + jit(6) });
+    }
+  }
+
+  return positions;
+}
+
 // ─── Phyllotaxis cluster-centre placement ─────────────────────────────────────
 
 function computeClusterCenters(clusterKeys, W, H) {
@@ -228,7 +315,7 @@ function buildStylesheet() {
       style: {
         width: 'data(weight)',
         'line-color': 'data(color)',
-        'line-opacity': 0.25,
+        'line-opacity': 0.42,
         'curve-style': 'bezier',
         'target-arrow-shape': 'none',
         'transition-property': 'line-opacity, width',
@@ -314,9 +401,21 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     });
     const maxDeg = Math.max(...Object.values(degreeMap), 1);
 
-    // ── 4. Track cluster membership ──────────────────────────────────────────
-    const clusterMeta = {};
-    clusterKeys.forEach(k => { clusterMeta[k] = []; });
+    // ── 4. Pre-group nodes by cluster & pre-compute shaped positions ──────────
+    const clusterNodeMap = {};   // cluster -> [nodeId, ...]
+    clusterKeys.forEach(k => { clusterNodeMap[k] = []; });
+    rawNodes.forEach(node => clusterNodeMap[clusterKey(node)].push(String(node.id)));
+
+    const nodeClusterIndex = {}; // nodeId -> index within its cluster
+    const clusterPositions = {}; // cluster -> [{x, y}, ...]
+    clusterKeys.forEach((k, clusterIdx) => {
+      clusterNodeMap[k].forEach((id, i) => { nodeClusterIndex[id] = i; });
+      const size   = clusterNodeMap[k].length;
+      const center = centers[k] || { x: W / 2, y: H / 2 };
+      // Radius scales with node count but stays safe so cluster rings don't collide
+      const baseR  = Math.min(62, Math.max(24, 14 + size * 6.5));
+      clusterPositions[k] = computeClusterShape(size, center.x, center.y, baseR, clusterIdx);
+    });
 
     // ── 5. Build node elements ───────────────────────────────────────────────
     const elements = [];
@@ -324,24 +423,13 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     rawNodes.forEach(node => {
       const id      = String(node.id);
       const cluster = clusterKey(node);
-      const center  = centers[cluster] || { x: W / 2, y: H / 2 };
-      clusterMeta[cluster].push(id);
-
-      const clusterSize = rawNodes.filter(n => clusterKey(n) === cluster).length;
-      const idx = clusterMeta[cluster].length - 1;
-
-      // Ring radius: small enough that adjacent cluster rings don't collide.
-      // Rule: innerR_max < maxR * sqrt(2/n) / 2 - buffer
-      // Empirically safe: cap at 55px, scale by 5.5px/node
-      const innerR = Math.min(55, Math.max(20, clusterSize * 5.5));
-      const angle  = (idx / Math.max(clusterSize, 1)) * 2 * Math.PI;
-      const jx = (Math.random() - 0.5) * 6;
-      const jy = (Math.random() - 0.5) * 6;
+      const idx     = nodeClusterIndex[id] ?? 0;
+      const pos     = clusterPositions[cluster]?.[idx] ?? centers[cluster] ?? { x: W / 2, y: H / 2 };
 
       // Node size: quality-scaled 16–46px so nodes stay readable but compact
-      const quality   = node.quality_score || node.quality || 5;
-      const degBonus  = (degreeMap[id] / maxDeg) * 8;   // 0-8 bonus
-      const nodeSize  = Math.min(46, Math.max(16, 16 + quality * 1.9 + degBonus * 0.5));
+      const quality  = node.quality_score || node.quality || 5;
+      const degBonus = (degreeMap[id] / maxDeg) * 8;   // 0-8 bonus
+      const nodeSize = Math.min(46, Math.max(16, 16 + quality * 1.9 + degBonus * 0.5));
 
       elements.push({
         group: 'nodes',
@@ -354,10 +442,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
           size: nodeSize,
           rawData: node,
         },
-        position: {
-          x: center.x + innerR * Math.cos(angle) + jx,
-          y: center.y + innerR * Math.sin(angle) + jy,
-        },
+        position: pos,
       });
     });
 

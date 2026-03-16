@@ -50,6 +50,10 @@ logger = logging.getLogger(__name__)
 db: SimpleVectorDB = None
 rag_chatbot: RAGChatbot = None
 
+# In-memory cache for the graph export (avoids re-running expensive AI call on every fetch)
+_graph_cache: dict = {"result": None, "ts": 0.0, "node_count": 0}
+_GRAPH_CACHE_TTL = 600  # seconds (10 minutes)
+
 # Models
 class HistoryItem(BaseModel):
     url: str
@@ -466,6 +470,8 @@ async def ingest_history(items: List[HistoryItem]):
     
     try:
         results = await process_urls(items)
+        # Invalidate graph cache so next fetch gets fresh AI clustering
+        _graph_cache["result"] = None
         return {
             "status": "success",
             **results,
@@ -1062,8 +1068,9 @@ async def reindex_embeddings():
 
 
 @app.get("/api/knowledge-graph/export")
-async def export_knowledge_graph():
+async def export_knowledge_graph(force: bool = False):
     """Export knowledge graph with AI-based semantic clustering (DBSCAN on embeddings, topic fallback)"""
+    import time
     try:
         # Get all content from database
         response = await asyncio.to_thread(
@@ -1084,6 +1091,18 @@ async def export_knowledge_graph():
             }
 
         items = response.data
+
+        # ── Cache check: return cached result if fresh and node count unchanged ──
+        now = time.time()
+        cached = _graph_cache["result"]
+        if (
+            not force
+            and cached is not None
+            and (now - _graph_cache["ts"]) < _GRAPH_CACHE_TTL
+            and _graph_cache["node_count"] == len(items)
+        ):
+            logger.info(f"📦 Returning cached graph ({len(items)} nodes, age={(now - _graph_cache['ts']):.0f}s)")
+            return cached
 
         # ── 1. AI produces clusters + edges in one call ───────────────────────────
         id_to_cluster = {}
@@ -1208,6 +1227,11 @@ async def export_knowledge_graph():
             }
         }
         
+        # Store in cache
+        _graph_cache["result"] = graph_data
+        _graph_cache["ts"] = time.time()
+        _graph_cache["node_count"] = len(items)
+
         logger.info(f"Exported knowledge graph: {len(nodes)} nodes, {len(links)} links")
         return graph_data
         
@@ -1242,6 +1266,7 @@ async def reset_database():
         await asyncio.to_thread(
             db.client.table('processed_content').delete().neq('id', 0).execute
         )
+        _graph_cache["result"] = None  # invalidate cache
         return {
             "status": "success",
             "message": "Database reset successfully"
