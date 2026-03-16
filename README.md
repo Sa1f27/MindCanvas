@@ -11,6 +11,20 @@
 
 ---
 
+**Lords Institute of Engineering and Technology**
+Department of Computer Science and Engineering (AI & ML)
+
+| # | Name | Roll No. | Role |
+|---|---|---|---|
+| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
+| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
+| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
+| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
+
+**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
+
+---
+
 ## Table of Contents
 
 1. [About](#about)
@@ -23,7 +37,6 @@
 8. [API Reference](#api-reference)
 9. [Manual Installation](#manual-installation)
 10. [Troubleshooting](#troubleshooting)
-11. [Team](#team)
 
 ---
 
@@ -275,22 +288,6 @@ npm run dev
 | Clustering falls back to topics | Invalid or missing OpenAI key | AI clustering requires a working API key |
 | Port already in use | Another process on 8090/3030 | Change ports in `docker-compose.yml` |
 | `docker compose` not found | Old Docker version | Upgrade to Docker Compose v2 (`docker compose`, not `docker-compose`) |
-
----
-
-## Team
-
-**Lords Institute of Engineering and Technology**
-Department of Computer Science and Engineering (AI & ML)
-
-| # | Name | Roll No. | Role |
-|---|---|---|---|
-| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
-| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
-| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
-| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
-
-**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
 
 ---
 
