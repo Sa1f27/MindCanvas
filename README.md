@@ -14,14 +14,14 @@
 **Lords Institute of Engineering and Technology**
 Department of Computer Science and Engineering (AI & ML)
 
-| # | Name | Roll No. | Role |
-|---|---|---|---|
-| 1 | Mohammed Huzaifah | 160922748020 | Full Stack & AI |
-| 2 | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG |
-| 3 | Niyazuddin Mohammed | 160922748039 | Frontend & Graph |
-| 4 | Mir Danish Ali | 160922748023 | ML & Embeddings |
+| #   | Name                     | Roll No.     | Role             |
+| --- | ------------------------ | ------------ | ---------------- |
+| 1   | Mohammed Huzaifah        | 160922748020 | Full Stack & AI  |
+| 2   | Syed Abdul Muqeet Mujeeb | 160922748006 | Backend & RAG    |
+| 3   | Niyazuddin Mohammed      | 160922748039 | Frontend & Graph |
+| 4   | Mir Danish Ali           | 160922748023 | ML & Embeddings  |
 
-**Project Guide:** Mr. Khaja Pasha *(Assistant Professor, Dept. of CSE — AI & ML)*
+**Project Guide:** Mr. Shaik Khaja Pasha _(Assistant Professor, Dept. of CSE — AI & ML)_
 
 ---
 
@@ -45,6 +45,7 @@ Department of Computer Science and Engineering (AI & ML)
 We consume vast amounts of content daily — articles, tutorials, research papers, documentation — but this knowledge remains scattered and disconnected. **MindCanvas** solves this by transforming browsing data into a visual, searchable knowledge graph with AI-powered semantic clustering and a context-aware conversational assistant.
 
 **Core capabilities:**
+
 - Automatically groups related content into meaningful clusters using GPT-4.1-mini
 - Visualises relationships between topics as an interactive neural-style graph
 - Lets you query your own knowledge base in natural language via RAG
@@ -54,33 +55,37 @@ We consume vast amounts of content daily — articles, tutorials, research paper
 ## Screenshots
 
 ![Knowledge Graph](docs/images/image.png)
-*Interactive knowledge graph with AI semantic clustering*
+_Interactive knowledge graph with AI semantic clustering_
 
 ![AI Chat Interface](docs/images/image-4.png)
-*RAG-powered chatbot with source citations and confidence scores*
+_RAG-powered chatbot with source citations and confidence scores_
 
 ![Graph Clusters](docs/images/image-5.png)
-*Semantic cluster view with neural-style node layout*
+_Semantic cluster view with neural-style node layout_
 
 ---
 
 ## Features
 
 ### AI-Powered Semantic Clustering
+
 - **GPT-4.1-mini JSON Mode** — structured LLM output assigns nodes to semantic clusters (Python pages group with Python, finance with finance, etc.)
 - **Smart Fallback** — topic-specificity algorithm activates when the API is unavailable, ensuring clustering always works
 
 ### Interactive Knowledge Graph
+
 - **Neural Layout** — phyllotaxis golden-angle cluster placement with polygon/neuron/spiral node shapes per cluster size
 - **Cytoscape.js** — hardware-accelerated graph rendering with glow nodes, shadow-blur effects, and cluster coloring
 - **Interactive** — hover to highlight connections, click any node to inspect details and related content
 
 ### RAG Chatbot
+
 - **Knowledge-Aware** — answers questions grounded in your actual browsing history and saved content
 - **Source Citations** — every response references the content it draws from with similarity scores
 - **Keyword Fallback** — gracefully handles queries even when vector search returns no results
 
 ### Chrome Extension
+
 - **One-Click Export** — sends browsing history directly to MindCanvas
 - **Privacy First** — all data stays on your machine; nothing is sent to third-party servers
 
@@ -89,28 +94,31 @@ We consume vast amounts of content daily — articles, tutorials, research paper
 ## Tech Stack
 
 ### Backend
-| Technology | Purpose |
-|---|---|
-| **FastAPI** | Async Python web framework |
-| **SentenceTransformer** `all-MiniLM-L6-v2` | 384-dim local embeddings |
-| **OpenAI GPT-4.1-mini** | Semantic clustering & content analysis |
-| **asyncpg** + **pgvector** | High-performance PostgreSQL vector queries |
-| **scikit-learn** (DBSCAN) | Embedding-based clustering fallback |
-| **BeautifulSoup** | Web content extraction |
+
+| Technology                                 | Purpose                                    |
+| ------------------------------------------ | ------------------------------------------ |
+| **FastAPI**                                | Async Python web framework                 |
+| **SentenceTransformer** `all-MiniLM-L6-v2` | 384-dim local embeddings                   |
+| **OpenAI GPT-4.1-mini**                    | Semantic clustering & content analysis     |
+| **asyncpg** + **pgvector**                 | High-performance PostgreSQL vector queries |
+| **scikit-learn** (DBSCAN)                  | Embedding-based clustering fallback        |
+| **BeautifulSoup**                          | Web content extraction                     |
 
 ### Frontend
-| Technology | Purpose |
-|---|---|
-| **React 18** + **Vite** | UI framework & fast dev/build tooling |
-| **Cytoscape.js** + **fcose** | Graph layout and visualisation |
-| **Styled Components** | Dark indigo theme with CSS-in-JS |
-| **Zustand** | Lightweight global state management |
-| **Framer Motion** | Animations and transitions |
+
+| Technology                   | Purpose                               |
+| ---------------------------- | ------------------------------------- |
+| **React 18** + **Vite**      | UI framework & fast dev/build tooling |
+| **Cytoscape.js** + **fcose** | Graph layout and visualisation        |
+| **Styled Components**        | Dark indigo theme with CSS-in-JS      |
+| **Zustand**                  | Lightweight global state management   |
+| **Framer Motion**            | Animations and transitions            |
 
 ### Infrastructure
-| Technology | Purpose |
-|---|---|
-| **Docker** + **Docker Compose** | Container orchestration |
+
+| Technology                       | Purpose                                    |
+| -------------------------------- | ------------------------------------------ |
+| **Docker** + **Docker Compose**  | Container orchestration                    |
 | **PostgreSQL 16** + **pgvector** | Vector similarity search & content storage |
 
 ---
@@ -184,10 +192,10 @@ This starts three containers: `postgres` (pgvector), `backend` (FastAPI), and `f
 
 ### 4. Access
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3030 |
-| Backend API | http://localhost:8090 |
+| Service              | URL                        |
+| -------------------- | -------------------------- |
+| Frontend             | http://localhost:3030      |
+| Backend API          | http://localhost:8090      |
 | Interactive API Docs | http://localhost:8090/docs |
 
 ### 5. Load Sample Data (Optional)
@@ -208,11 +216,11 @@ curl -X POST http://localhost:8090/api/ingest \
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | **Yes** | OpenAI API key for clustering and chat |
-| `DATABASE_URL` | No | PostgreSQL connection string (default: local Docker container) |
-| `OPENAI_MODEL` | No | Override default model (default: `gpt-4o-mini`) |
+| Variable         | Required | Description                                                    |
+| ---------------- | -------- | -------------------------------------------------------------- |
+| `OPENAI_API_KEY` | **Yes**  | OpenAI API key for clustering and chat                         |
+| `DATABASE_URL`   | No       | PostgreSQL connection string (default: local Docker container) |
+| `OPENAI_MODEL`   | No       | Override default model (default: `gpt-4o-mini`)                |
 
 Default `backend/.env`:
 
@@ -227,17 +235,17 @@ DATABASE_URL=postgresql://postgres:postgres@postgres:5432/mindcanvas
 
 ## API Reference
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/ingest` | Import browsing history (batch URL list) |
-| `POST` | `/api/chat` | Chat with the RAG knowledge assistant |
-| `POST` | `/api/search/semantic` | Vector similarity search |
-| `GET` | `/api/knowledge-graph/export` | Full graph export (nodes + edges + clusters) |
-| `GET` | `/api/cluster` | Cluster metadata |
-| `GET` | `/api/content` | List all stored content |
-| `GET` | `/api/trending` | Trending topics by frequency |
-| `GET` | `/api/recommendations` | Personalised content recommendations |
-| `GET` | `/api/health` | System health check |
+| Method | Endpoint                      | Description                                  |
+| ------ | ----------------------------- | -------------------------------------------- |
+| `POST` | `/api/ingest`                 | Import browsing history (batch URL list)     |
+| `POST` | `/api/chat`                   | Chat with the RAG knowledge assistant        |
+| `POST` | `/api/search/semantic`        | Vector similarity search                     |
+| `GET`  | `/api/knowledge-graph/export` | Full graph export (nodes + edges + clusters) |
+| `GET`  | `/api/cluster`                | Cluster metadata                             |
+| `GET`  | `/api/content`                | List all stored content                      |
+| `GET`  | `/api/trending`               | Trending topics by frequency                 |
+| `GET`  | `/api/recommendations`        | Personalised content recommendations         |
+| `GET`  | `/api/health`                 | System health check                          |
 
 Full interactive documentation: http://localhost:8090/docs
 
@@ -281,13 +289,13 @@ npm run dev
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| Backend exits immediately | Missing `OPENAI_API_KEY` in `.env` | Add a valid key to `backend/.env` |
-| Graph shows no nodes | No data ingested yet | Load sample data or use the Chrome extension |
-| Clustering falls back to topics | Invalid or missing OpenAI key | AI clustering requires a working API key |
-| Port already in use | Another process on 8090/3030 | Change ports in `docker-compose.yml` |
-| `docker compose` not found | Old Docker version | Upgrade to Docker Compose v2 (`docker compose`, not `docker-compose`) |
+| Symptom                         | Likely Cause                       | Fix                                                                   |
+| ------------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
+| Backend exits immediately       | Missing `OPENAI_API_KEY` in `.env` | Add a valid key to `backend/.env`                                     |
+| Graph shows no nodes            | No data ingested yet               | Load sample data or use the Chrome extension                          |
+| Clustering falls back to topics | Invalid or missing OpenAI key      | AI clustering requires a working API key                              |
+| Port already in use             | Another process on 8090/3030       | Change ports in `docker-compose.yml`                                  |
+| `docker compose` not found      | Old Docker version                 | Upgrade to Docker Compose v2 (`docker compose`, not `docker-compose`) |
 
 ---
 

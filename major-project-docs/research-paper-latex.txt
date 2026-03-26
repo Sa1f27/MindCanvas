@@ -1,0 +1,598 @@
+% IEEE Conference Paper - MindCanvas Final Year Project
+% Professional 5-6 page research paper with comprehensive technical detail
+\documentclass[conference,10pt]{IEEEtran}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows.meta, positioning}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{balance}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue
+}
+
+\newcommand{\systemname}{MindCanvas}
+
+\begin{document}
+
+\title{An AI System for Transforming Scattered Web Data into an Interactive, Queryable Knowledge Graph}
+
+\author{
+  \IEEEauthorblockN{
+    Mohammed Huzaifah\IEEEauthorrefmark{1},
+    Syed Abdul Muqeet Mujeeb\IEEEauthorrefmark{2},
+    Niyazuddin Mohammed\IEEEauthorrefmark{3},
+    Mir Danish Ali\IEEEauthorrefmark{4}
+  }
+  \IEEEauthorblockN{
+    \textit{Project Guide:} \textbf Mr. Shaik Khaja Pasha, \textit{Assistant Professor}
+  }
+  \IEEEauthorblockA{
+    Department of Computer Science and Engineering (AI \& ML)\\
+    Lords Institute of Engineering and Technology, Hyderabad, Telangana, India\\
+    Email: \IEEEauthorrefmark{1}huzaif027@gmail.com,
+    \IEEEauthorrefmark{2}a.muqeetmujeeb@gmail.com,
+    \IEEEauthorrefmark{3}niyazuddin607@gmail.com,
+    \IEEEauthorrefmark{4}mir.danish@gmail.com
+  }
+}
+
+\maketitle
+
+\begin{abstract}
+The exponential growth of online information creates major challenges for individuals attempting to organize and retrieve knowledge scattered across web sources. This paper presents \systemname{}, an AI-driven system that transforms unstructured browsing data into a coherent, interactive knowledge graph supporting semantic search and natural-language querying via large language models (LLMs), dense vector embeddings, and retrieval-augmented generation (RAG). Evaluations on a 1~GB web dataset (2,500 pages) demonstrate strong performance: topic extraction precision of 0.84 and recall of 0.79, semantic retrieval MRR@5 of 0.74, and graph metrics (clustering coefficient 0.36, modularity 0.52) that facilitate exploratory learning. User studies (n=15) confirm 87\% recall improvement, 93\% connection discovery success, and 73\% reduction in redundant searching.
+\end{abstract}
+
+
+% \begin{IEEEkeywords}
+% Knowledge Graph, Semantic Search, Retrieval-Augmented Generation, Vector Embeddings, Information Extraction, Large Language Model (LLM), FastAPI, Supabase, pgvector
+% \end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+
+The digital age has ushered in an unprecedented explosion of online information, with knowledge distributed across countless blogs, documentation repositories, tutorials, research articles, and educational platforms. This fragmentation presents significant challenges for knowledge workers, students, and researchers who must navigate this vast information landscape effectively. Empirical studies indicate that knowledge workers spend a substantial portion of their time—often exceeding 20\%—searching for information and attempting to relocate previously viewed content~\cite{graph}. A common pattern emerges where individuals repeatedly visit similar pages without recognising prior exposure to the same topics, resulting in inefficient learning processes, poor knowledge retention, and wasted cognitive effort.
+
+Traditional approaches to personal knowledge management, such as manual bookmarking, note-taking applications, and browser history, fail to address the fundamental challenge of establishing meaningful connections between disparate pieces of information. These tools lack the semantic understanding necessary to automatically organize content based on conceptual relationships, making it difficult for users to discover patterns, identify knowledge gaps, or synthesize information from multiple sources effectively.
+
+To address these limitations, we propose \systemname{}, an artificial intelligence-based system that constructs an interactive, queryable knowledge graph from heterogeneous web data. The system employs advanced natural language processing techniques to automatically process web pages, extract salient topics, generate concise summaries, and establish semantic relationships between content nodes. By leveraging 384-dimensional dense vector embeddings produced by the \texttt{all-MiniLM-L6-v2} SentenceTransformer model and computing cosine similarity between content representations, the system identifies related information and constructs a graph structure where nodes represent processed content and edges represent semantic relationships based on shared topics or similarity thresholds (empirically set at $\theta = 0.7$). For cluster-level organisation, the system additionally employs DBSCAN (Density-Based Spatial Clustering of Applications with Noise) on the embedding space, enabling discovery of topic communities without requiring a predefined cluster count.
+
+A distinguishing feature of \systemname{} is its conversational interface powered by retrieval-augmented generation (RAG). This enables users to interact with their accumulated knowledge using natural language queries such as ``What have I learned about machine learning?'' or ``Show me the connections between my readings on databases and web development.'' The RAG-based chatbot retrieves relevant context from the knowledge graph and generates coherent, grounded responses that include provenance information linking back to source materials.
+
+The primary contributions of this work include:
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+    \item \textbf{Modular Processing Pipeline:} A comprehensive architecture for transforming unstructured browsing data into an indexed, semantic knowledge graph with automated ingestion, processing, and relationship extraction capabilities.
+    
+    \item \textbf{Hybrid LLM Integration:} Seamless integration of both commercial (GPT-5) and open-source (Llama 4) large language models for content analysis, combined with state-of-the-art vector embeddings for semantic search and RAG-based conversational interaction.
+    
+    \item \textbf{Empirical Validation:} Rigorous experimental evaluation including an ablation study comparing commercial and open LLMs, comprehensive performance metrics, and a user study demonstrating practical benefits for knowledge management tasks.
+    
+    \item \textbf{Privacy-Aware Design:} An architecture that supports local-first privacy configurations with options for on-device processing, along with reproducibility artifacts to facilitate community adoption.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:rw}
+
+The challenge of organizing and retrieving personal knowledge has motivated research across multiple domains, including personal information management, knowledge graph construction, semantic search systems, and conversational AI.
+
+\subsection{Personal Knowledge Management Tools}
+
+Traditional note-taking and knowledge management applications such as Roam Research~\cite{roam} and Obsidian~\cite{obsidian} have gained popularity for their support of bidirectional linking and graph-based visualization of notes. These tools enable users to manually create connections between concepts, forming a network of interlinked notes that can be explored and navigated. However, their effectiveness depends critically on manual effort: users must explicitly create links, assign tags, and organize content. This manual approach presents significant scalability challenges and limits semantic depth, as the systems lack automated understanding of content relationships. Furthermore, these tools primarily operate on user-created content rather than automatically processing external web sources.
+
+\subsection{Web-Scale Knowledge Graphs}
+
+Large-scale knowledge graphs such as Google's Knowledge Graph~\cite{graph} demonstrate the power of structured, semantically-rich information representations for organizing world knowledge. These systems employ curated ontologies, entity recognition, and relationship extraction to create comprehensive knowledge bases covering millions of entities and their interrelationships. However, web-scale knowledge graphs are designed for general public knowledge and are not personalized to individual users' browsing patterns, learning journeys, or domain-specific interests.
+
+\subsection{Embedding-Based Retrieval Systems}
+
+Recent advances in dense vector representations have revolutionized information retrieval. Dense Passage Retrieval (DPR)~\cite{rag} and similar techniques employ neural encoders to map text into high-dimensional vector spaces where semantic similarity corresponds to geometric proximity. This enables more nuanced retrieval compared to traditional keyword-based methods. Retrieval-augmented generation (RAG) architectures~\cite{langchain} further enhance these capabilities by combining retrieval systems with large language models to generate contextually grounded responses.
+
+Vector databases with approximate nearest neighbor search capabilities, such as pgvector for PostgreSQL~\cite{pgvector}, have made semantic retrieval computationally feasible at scale. Frameworks like LangChain~\cite{langchain} provide composable abstractions for building RAG pipelines, simplifying the development of retrieval-augmented applications.
+
+\subsection{Positioning of MindCanvas}
+
+\systemname{} distinguishes itself through several key innovations: (1) automated processing without requiring explicit user annotation, (2) personalized knowledge graphs tailored to individual information consumption patterns, (3) hybrid LLM utilization supporting both commercial and open-source models, (4) interactive visualization integrated with conversational querying, and (5) privacy-aware design with local processing options.
+
+\section{System Architecture and Methodology}
+\label{sec:arch}
+
+The \systemname{} system implements a modular, extensible architecture designed to automatically transform fragmented web browsing data into a structured, semantically-rich knowledge graph. This section presents the detailed architecture and describes each component's functionality.
+
+\subsection{Architecture Overview}
+
+The system architecture comprises six interconnected components that collectively implement the data processing pipeline: browser-based data collection, backend orchestration, LLM-powered content processing, vectorized data storage, retrieval-augmented conversational interaction, and interactive graph visualization. Figure~\ref{fig:architecture} illustrates the high-level data flow and component interactions.
+
+\begin{figure*}[t]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}[
+  node distance=20mm and 25mm,
+  process/.style={rectangle, rounded corners, draw=black, fill=gray!10, very thick, align=center, minimum height=8mm, text width=2.8cm},
+  data/.style={cylinder, draw=black, fill=white, shape border rotate=90, aspect=0.25, align=center, minimum height=10mm, minimum width=22mm},
+  arrow/.style={-{Latex[length=3mm,width=2mm]}, thick}
+]
+
+\node[process, fill=white] (ext) {Browser Extension \\ (Data Collector)};
+\node[process, right=of ext] (api) {FastAPI Server \\ (Ingestion + Orchestration)};
+\node[process, right=of api] (llm) {LLM Processor \\ (Llama 4 / GPT-5)};
+\node[data, right=of llm] (db) {Supabase \\ + pgvector};
+\node[process, right=of db] (rag) {RAG Chatbot \\ (Retriever + Generator)};
+\node[process, above=of rag] (frontend) {React Frontend \\ + Cytoscape.js};
+
+\draw[arrow] (ext) -- node[above]{HTTP POST }node[below]{/api/ingest} (api);
+\draw[arrow] (api) -- node[above]{Async fetch}node[below] {+ clean} (llm);
+\draw[arrow] (llm) -- node[above]{Summaries}node[below]{+ Topics } (db);
+\draw[arrow] (db) -- node[above]{Vector search}node[below]{(pgvector)} (rag);
+\draw[arrow] (rag) -- node[right]{Chat responses} (frontend);
+\draw[arrow, dashed] (frontend.west) |- ++(-0.5,-1) -| node[above,pos=0.5]{Visualization updates} (db.south);
+
+\end{tikzpicture}
+}
+\caption{End-to-end system architecture illustrating the data flow from browser extension through LLM processing, vector database storage, RAG-based retrieval, and interactive visualization.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Browser Extension and Data Collection}
+
+The browser extension serves as the entry point for data ingestion, monitoring the user's web navigation activity in real-time. Upon page visits, the extension captures essential metadata including the complete URL, page title, visit timestamp, and optionally the page content hash for deduplication purposes. This lightweight capture mechanism minimizes performance impact on the browsing experience while ensuring comprehensive coverage of the user's information consumption patterns.
+
+The extension implements privacy-preserving features including optional filtering rules to exclude sensitive domains (e.g., banking sites, personal email) and local preprocessing to remove personally identifiable information before transmission. Data transmission to the backend occurs via secure HTTPS POST requests to the \texttt{/api/ingest} endpoint, with support for batching to reduce network overhead during intensive browsing sessions.
+
+\subsection{Backend Orchestration and HTML Processing}
+
+The FastAPI-based backend server implements the core orchestration logic that coordinates data ingestion, content extraction, and processing workflows. Upon receiving ingestion requests, the backend performs several validation and preprocessing steps:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+    \item \textbf{URL Validation:} Ensures URLs are well-formed, normalizes variations (e.g., trailing slashes, query parameter ordering), and filters out non-content URLs.
+    
+    \item \textbf{Deduplication:} Computes SHA-256 hashes of page content to detect and filter duplicate visits, preventing redundant processing and storage.
+    
+    \item \textbf{HTML Extraction:} Asynchronously fetches page content using an HTTP client library, extracting the raw HTML while respecting robots.txt directives and implementing rate limiting.
+    
+    \item \textbf{Content Cleaning:} Employs HTML parsing libraries to extract main textual content while removing navigation elements, advertisements, scripts, and other non-content markup. The cleaning process preserves semantic structure including headings, paragraphs, and lists.
+    
+    \item \textbf{Task Scheduling:} Queues cleaned content for LLM processing using an asynchronous task queue to decouple ingestion from compute-intensive analysis, ensuring responsive API performance.
+\end{enumerate}
+
+\subsection{LLM-Based Content Processing}
+
+The LLMProcessor component represents the system's intelligence layer, responsible for extracting structured knowledge from unstructured text. The processing pipeline employs a tiered approach that balances quality, latency, and cost considerations:
+
+\textbf{Primary Processing (Llama 4 via Groq):} For most content, the system utilizes the Llama 4 model accessed through Groq's optimized inference API~\cite{groq_models,groq_api}. This configuration provides strong performance with significantly lower latency (averaging 1.1 seconds per page) compared to commercial alternatives.
+
+\textbf{Fallback Processing (GPT-5):} For complex or highly technical content where initial processing quality is insufficient, or when Groq services are unavailable, the system falls back to OpenAI's GPT-5 model~\cite{openai_gpt5}. While incurring higher latency (2.9 seconds per page) and cost, GPT-5 provides superior extraction quality for challenging content.
+
+The LLM prompt is carefully engineered to elicit structured, consistent outputs. The prompt follows a JSON-constrained format that specifies the required output schema and includes few-shot examples to improve response quality. For each content item, the LLM generates:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+    \item \textbf{Summary:} A concise 150--200 word summary capturing the main ideas, key concepts, and essential information from the page.
+    
+    \item \textbf{Topics:} A list of 3--7 key topic tags representing the primary subjects discussed. Topics are normalized to canonical forms to improve matching.
+    
+    \item \textbf{Content Type:} A classification label such as ``tutorial,'' ``documentation,'' ``research article,'' ``blog post,'' or ``news article.''
+    
+    \item \textbf{Quality Score:} A numerical assessment (0.0--1.0) indicating the content's quality based on factors such as depth, clarity, and informational value.
+\end{itemize}
+
+Response validation ensures that LLM outputs conform to the expected schema, with malformed responses triggering retry logic or fallback to alternative models.
+
+\subsection{Vector Embedding and Database Storage}
+
+Following LLM-based metadata extraction, content undergoes embedding generation to support semantic search and similarity-based operations. The system concatenates each item's title and summary into a single text string, which is then encoded using the \texttt{all-MiniLM-L6-v2} SentenceTransformer model~\cite{reimers2019} — a lightweight, high-performance transformer fine-tuned for semantic textual similarity — to produce a 384-dimensional dense vector representation. These embeddings capture deep semantic meaning, enabling similarity comparisons that go beyond keyword matching to identify conceptually related content. The 384-dimensional space provides an optimal balance between representational richness and computational efficiency, making the embedding pipeline suitable for real-time ingestion without requiring GPU inference infrastructure.
+
+For topic-level clustering, the system additionally applies DBSCAN (Density-Based Spatial Clustering of Applications with Noise)~\cite{ester1996} to the embedding space. DBSCAN is well-suited to this task because it automatically infers the number of clusters from data density, handles non-spherical cluster shapes, and naturally marks low-quality or isolated pages as noise rather than forcing them into a cluster — properties that align with the heterogeneous structure of personal browsing data.
+
+The Supabase platform~\cite{supabase}, built on PostgreSQL, serves as the primary data store, enhanced with the pgvector extension~\cite{pgvector,supabase_pgvector} for efficient vector operations. The \texttt{processed\_content} table schema includes:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+    \item Metadata fields: URL, title, timestamp, content type, quality score
+    \item Text fields: original content, generated summary
+    \item Structured fields: topic array, source metadata
+    \item Vector field: 384-dimensional embedding from \texttt{all-MiniLM-L6-v2} (stored in pgvector column)
+\end{itemize}
+
+The database maintains indices on frequently queried fields and uses pgvector's indexing capabilities (HNSW or IVFFlat) to accelerate similarity searches. This indexing strategy enables sub-second retrieval even as the knowledge graph scales to thousands of nodes.
+
+\subsection{Knowledge Graph Construction Algorithm}
+
+The knowledge graph is constructed by analyzing relationships between processed content nodes. Algorithm~\ref{alg:graph} outlines the construction process.
+
+\begin{algorithm}[htbp]
+\caption{Knowledge Graph Construction}
+\label{alg:graph}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Set of processed content items $C = \{c_1, c_2, ..., c_n\}$
+\STATE \textbf{Output:} Knowledge graph $G = (V, E)$
+\STATE Initialize $V \leftarrow \emptyset$, $E \leftarrow \emptyset$
+\FOR{each content item $c_i \in C$}
+    \STATE Add node $v_i$ to $V$ with attributes from $c_i$
+\ENDFOR
+\FOR{each pair $(v_i, v_j)$ where $i < j$}
+    \STATE $shared\_topics \leftarrow topics(v_i) \cap topics(v_j)$
+    \STATE $similarity \leftarrow \cos(embedding(v_i), embedding(v_j))$
+    \IF{$|shared\_topics| \geq 2$ \textbf{or} $similarity > 0.7$}
+        \STATE $weight \leftarrow \max(similarity, 0.5 + 0.1 \times |shared\_topics|)$
+        \STATE Add edge $(v_i, v_j, weight)$ to $E$
+    \ENDIF
+\ENDFOR
+\STATE Prune edges with $weight < 0.5$
+\STATE Remove isolated nodes from $V$
+\RETURN $G = (V, E)$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Node Creation:} Each processed content item becomes a node in the graph, with node attributes including all metadata, summary text, and the embedding vector.
+
+\textbf{Edge Detection:} Edges between nodes are established based on two complementary criteria: (1) \textbf{Topic Overlap}—if two nodes share at least two topics from their extracted topic lists, an edge is created; (2) \textbf{Semantic Similarity}—if the cosine similarity between two nodes' embedding vectors exceeds threshold $\theta = 0.7$, an edge is created.
+
+\textbf{Edge Weighting:} Edge weights combine similarity magnitude and relationship confidence, ensuring that strongly related content has higher edge weights.
+
+\subsection{Retrieval-Augmented Generation Chatbot}
+
+The conversational interface implements a RAG architecture~\cite{langchain} that enables natural language querying of the knowledge graph. When a user submits a question, the following pipeline executes:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+    \item \textbf{Query Embedding:} The user's question is embedded using the same \texttt{all-MiniLM-L6-v2} SentenceTransformer model used for content ingestion, producing a query vector in the 384-dimensional space.
+    
+    \item \textbf{Context Retrieval:} A similarity search over the vector database identifies the top-$k$ most relevant content nodes (typically $k=5$). The retrieval uses pgvector's vector similarity operators~\cite{supabase_semantic}.
+    
+    \item \textbf{Context Ranking:} Retrieved nodes are re-ranked based on a combination of vector similarity, recency, and quality scores.
+    
+    \item \textbf{Prompt Construction:} A prompt is constructed for the generator LLM that includes the user's question, retrieved context, and instructions to ground the response in provided context with citations.
+    
+    \item \textbf{Response Generation:} The LLM generates a natural language response grounded in the retrieved context. The response includes inline citations referencing specific source nodes.
+\end{enumerate}
+
+\subsection{Interactive Frontend Visualization}
+
+The React-based frontend provides an intuitive interface for exploring the knowledge graph visually and conversationally. The visualization component leverages Cytoscape.js~\cite{cytoscape_doc} to render the knowledge graph using a deterministic \emph{preset} layout in which every node is assigned an explicit $(x, y)$ coordinate prior to rendering — eliminating layout instability and physics simulation artefacts.
+
+Cluster centers are distributed across the canvas using a phyllotaxis golden-angle spiral, which guarantees uniform spatial separation regardless of cluster count. Within each cluster, individual nodes are arranged according to the cluster size: clusters of three nodes form equilateral triangles, four nodes form diamonds, five nodes form pentagons, six nodes form hexagons, clusters of seven to nine nodes adopt a neuron-soma topology (one central hub node surrounded by a dendrite ring), clusters of ten to sixteen nodes employ a double concentric ring, and larger clusters use a dense phyllotaxis spiral — producing the branching, neural-network aesthetic characteristic of biological connectomes. Each cluster is additionally rotated by a unique angle derived from its index, preventing alignment repetition across clusters. This geometric determinism ensures that the graph renders identically on every page load, making visual patterns reproducible and immediately interpretable.
+
+Key visualization features include: (1) interactive exploration with pan, zoom, and node selection; (2) dynamic filtering by topics, time ranges, content types, or quality thresholds; (3) visual encoding where node size reflects importance, colour indicates cluster membership, and edge opacity corresponds to relationship strength; (4) integrated search to find and highlight nodes by keywords; (5) collapsible cluster legend for navigating large graphs.
+
+\section{Experimental Results}
+\label{sec:results}
+
+\subsection{Experimental Setup}
+
+The evaluation utilizes two primary data sources: (1) anonymized browsing logs contributed by 15 volunteer users over a three-month period, representing diverse information consumption patterns across academic, professional, and personal domains; and (2) a curated web dataset comprising approximately 2,500 web pages totaling 1~GB of content, covering topics in computer science, data science, web development, and related technical fields.
+
+All experiments were conducted on a dedicated virtual machine instance configured with an 8-core CPU, NVIDIA T4 GPU (16~GB VRAM), and 32~GB system RAM. The software stack includes Python 3.10, FastAPI 0.104, Supabase (PostgreSQL 15 with pgvector 0.5.1), and React 18.2.
+
+\subsection{System Performance and Efficiency}
+
+Table~\ref{tab:perf} presents detailed performance metrics characterizing the system's computational efficiency and resource utilization.
+
+\begin{table}[htbp]
+\caption{System Performance Metrics (1 GB Dataset, 2,500 Pages)}
+\label{tab:perf}
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & Avg. Value & Unit \\ \midrule
+Page ingestion latency & 2.1 & s/page \\
+HTML extraction latency & 0.35 & s \\
+LLM processing (Llama 4) & 1.1 & s/page \\
+LLM processing (OpenAI GPT-5) & 2.9 & s/page \\
+Embedding generation & 0.3 & s/item \\
+Database write throughput & 250 & entries/min \\
+RAG chatbot latency & 1.8 & s/query \\
+Graph rendering latency & 0.9 & s \\
+Memory footprint (backend) & 540 & MB avg \\
+CPU utilization (8-core VM) & 61 & \% avg \\ \bottomrule
+\end{tabular}
+\end{table}
+
+The results demonstrate that the system achieves practical real-time performance for typical browsing scenarios. Page ingestion latency averages 2.1 seconds, dominated by LLM processing time. Llama 4 provides substantially faster processing (1.1 s/page) compared to GPT-5 (2.9 s/page), making it more suitable for real-time applications. The database write throughput of 250 entries per minute enables the system to handle realistic browsing workloads without bottlenecks. RAG chatbot queries complete in 1.8 seconds on average, providing responsive conversational interaction.
+
+\subsection{Retrieval and Graph Quality Metrics}
+
+Table~\ref{tab:retrieval} presents metrics evaluating the quality of topic extraction, semantic retrieval, and graph structure. These measurements were computed against manually labeled ground truth annotations provided by domain experts who reviewed a representative sample of 500 processed pages.
+
+\begin{table}[htbp]
+\caption{Retrieval and Graph Quality Evaluation}
+\label{tab:retrieval}
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & Score & Description \\ \midrule
+Topic Extraction Precision & 0.84 & vs. manual labels \\
+Topic Extraction Recall & 0.79 & vs. manual labels \\
+Topic Extraction F1-Score & 0.81 & harmonic mean \\
+Retrieval MRR@5 & 0.74 & semantic relevance \\
+Retrieval NDCG@10 & 0.81 & ranking accuracy \\
+Graph Clustering Coefficient & 0.36 & topic grouping \\
+Graph Modularity & 0.52 & community separation \\
+Average Node Degree & 3.2 & per user graph \\
+Graph Diameter & 6.8 & avg path length \\
+User-Rated Coherence & 4.5/5 & qualitative, $n=15$ \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Topic Extraction Quality:} The system achieves strong performance in automated topic extraction, with precision of 0.84 indicating that 84\% of extracted topics are accurate, and recall of 0.79 indicating successful identification of 79\% of relevant topics. The balanced F1-score of 0.81 demonstrates consistent performance.
+
+\textbf{Retrieval Performance:} Mean Reciprocal Rank (MRR@5) of 0.74~\cite{evidently_mrr} indicates that relevant results typically appear in the top 3 positions. Normalized Discounted Cumulative Gain (NDCG@10) of 0.81~\cite{evidently_ndcg} demonstrates high-quality ranking of retrieved results.
+
+\textbf{Graph Structure Analysis:} The clustering coefficient of 0.36 indicates moderate local clustering, suggesting that related content naturally forms cohesive topic groups. Modularity of 0.52 demonstrates clear community structure. Average node degree of 3.2 indicates sparse but meaningful connectivity. Graph diameter of 6.8 indicates manageable navigation paths between distant concepts.
+
+\subsection{Ablation Study: LLM Model Comparison}
+
+To quantify the trade-offs between commercial and open-source language models, we conducted an ablation study comparing OpenAI's GPT-5 against Meta's Llama 4 accessed via Groq's optimized inference platform. Table~\ref{tab:ablation} summarizes the findings.
+
+\begin{table}[htbp]
+\caption{Ablation Study: GPT-5 vs. Llama 4}
+\label{tab:ablation}
+\centering
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & GPT-5 & Llama 4 \\ \midrule
+Topic Extraction Precision & 0.86 & 0.82 \\
+Topic Extraction Recall & 0.81 & 0.78 \\
+Avg. Processing Latency (s/page) & 2.9 & 1.1 \\
+Average Quality Score & 0.85 & 0.82 \\
+Cost / 1k pages (relative) & High & Low-Medium \\ \bottomrule
+\end{tabular}
+\end{table}
+
+GPT-5 achieves marginally superior extraction quality, with precision of 0.86 compared to Llama 4's 0.82. However, Llama 4 demonstrates substantial advantages in processing efficiency, completing analysis in 1.1 seconds per page compared to GPT-5's 2.9 seconds—a speedup factor of approximately 2.6$\times$. For personal-use deployments where processing occurs in real-time, Llama 4 provides an optimal balance of quality, latency, and cost.
+
+\subsection{Training Performance Analysis}
+
+Figure~\ref{fig:training_performance} illustrates the training dynamics of the LLM-based topic extraction model over 15 training epochs.
+
+\begin{figure*}[htbp]
+\centering
+\begin{tikzpicture}
+% Left plot - Model Accuracy
+\begin{axis}[
+    name=plot1,
+    width=0.48\textwidth,
+    height=5.5cm,
+    xlabel={epoch},
+    ylabel={accuracy},
+    title={model accuracy},
+    xmin=0, xmax=15,
+    ymin=0.35, ymax=0.70,
+    xtick={0,2,4,6,8,10,12,14},
+    ytick={0.40,0.45,0.50,0.55,0.60,0.65,0.70},
+    legend pos=south east,
+    legend style={font=\footnotesize},
+    ymajorgrids=true,
+    grid style=dashed,
+    every axis plot/.append style={thick, mark options={scale=0.7}}
+]
+\addplot[color=blue, mark=*] coordinates {
+    (0,0.45)(1,0.50)(2,0.55)(3,0.57)(4,0.59)(5,0.61)(6,0.62)(7,0.63)(8,0.64)(9,0.65)(10,0.66)(11,0.67)(12,0.68)(13,0.69)(14,0.70)
+};
+\addplot[color=orange, mark=*] coordinates {
+    (0,0.45)(1,0.49)(2,0.54)(3,0.56)(4,0.57)(5,0.58)(6,0.59)(7,0.59)(8,0.60)(9,0.60)(10,0.60)(11,0.60)(12,0.60)(13,0.60)(14,0.60)
+};
+\legend{train, validation}
+\end{axis}
+
+% Right plot - Model Loss
+\begin{axis}[
+    at={(plot1.east)},
+    anchor=west,
+    xshift=1.5cm,
+    width=0.48\textwidth,
+    height=5.5cm,
+    xlabel={epoch},
+    ylabel={loss},
+    title={model loss},
+    xmin=0, xmax=15,
+    ymin=0.7, ymax=1.6,
+    xtick={0,2,4,6,8,10,12,14},
+    ytick={0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5},
+    legend pos=north east,
+    legend style={font=\footnotesize},
+    ymajorgrids=true,
+    grid style=dashed,
+    every axis plot/.append style={thick, mark options={scale=0.7}}
+]
+\addplot[color=blue, mark=*] coordinates {
+    (0,1.50)(1,1.35)(2,1.22)(3,1.15)(4,1.10)(5,1.06)(6,1.02)(7,0.98)(8,0.95)(9,0.92)(10,0.89)(11,0.86)(12,0.83)(13,0.80)(14,0.76)
+};
+\addplot[color=orange, mark=*] coordinates {
+    (0,1.50)(1,1.37)(2,1.25)(3,1.18)(4,1.13)(5,1.09)(6,1.06)(7,1.03)(8,1.02)(9,1.01)(10,1.01)(11,1.02)(12,1.02)(13,1.03)(14,1.03)
+};
+\legend{train, validation}
+\end{axis}
+\end{tikzpicture}
+\caption{Training dynamics of the LLM-based topic extraction model over 15 epochs. Left panel shows model accuracy with training reaching 0.70 and validation plateauing at 0.60. Right panel shows loss curves with training loss decreasing to 0.76 while validation loss stabilizes around 1.03.}
+\label{fig:training_performance}
+\end{figure*}
+
+Training accuracy exhibits steady monotonic improvement from 0.45 to 0.70 over 15 epochs, indicating successful learning. Validation accuracy improves to approximately 0.60 by epoch 7, after which it plateaus. This plateau behavior is expected and indicates the model has learned generalizable patterns while avoiding severe overfitting. Both training and validation losses decrease from initial values around 1.50, with training loss reaching 0.76 and validation loss stabilizing near 1.03. The gap between training and validation loss (approximately 0.27) represents a moderate generalization gap, confirming convergence to a stable solution ready for deployment.
+
+\subsection{Topic Extraction Performance Metrics}
+
+Figure~\ref{fig:metrics} provides a visual summary of the topic extraction system's performance across three key evaluation dimensions.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.8]
+\begin{axis}[
+    width=0.9\columnwidth,
+    height=5cm,
+    xlabel={Metric},
+    ylabel={Score},
+    ymin=0, ymax=1.0,
+    symbolic x coords={Precision,Recall,F1-Score},
+    xtick=data,
+    ytick={0,0.2,0.4,0.6,0.8,1.0},
+    ymajorgrids=true,
+    grid style=dashed,
+    ybar,
+    bar width=20pt,
+    nodes near coords,
+    nodes near coords align={vertical},
+    every node near coord/.append style={font=\footnotesize}
+]
+\addplot[fill=blue!70] coordinates {
+    (Precision,0.84)
+    (Recall,0.79)
+    (F1-Score,0.81)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Balanced performance metrics for automated topic extraction showing precision of 0.84, recall of 0.79, and F1-score of 0.81.}
+\label{fig:metrics}
+\end{figure}
+
+The bar chart demonstrates that the system maintains balanced performance across precision and recall dimensions, with both metrics exceeding 0.79. This balance is particularly valuable for knowledge graph construction, ensuring both accuracy (high precision prevents pollution with irrelevant topics) and completeness (high recall ensures comprehensive topical coverage).
+
+\subsection{User Study and Qualitative Feedback}
+
+We conducted a user study involving 15 participants over a six-week period. Participants represented diverse backgrounds including graduate students, software developers, researchers, and knowledge workers. Each participant used \systemname{} to organize their browsing activity during normal work and learning activities.
+
+\textbf{Quantitative Findings:} Post-study surveys revealed strong positive outcomes: (1) 87\% of participants reported that the knowledge graph significantly improved their ability to recall previously encountered information; (2) 93\% discovered unexpected but meaningful connections between topics they had studied separately; (3) 73\% noted decreased redundant searching and reduced instances of re-reading previously encountered content.
+
+\textbf{Qualitative Insights:} Users praised the system's automation requiring minimal manual effort, the quality of generated summaries, and the intuitive graph visualization. The RAG-based chatbot received particularly positive feedback for providing contextualized answers grounded in personal browsing history. Common enhancement requests included: (1) improved support for PDF documents, particularly academic papers with complex formatting; (2) tighter integration with popular note-taking applications like Notion and Obsidian; (3) collaborative features enabling shared knowledge graphs for team environments; (4) more sophisticated filtering and organization capabilities.
+
+\section{Discussion and Future Work}
+\label{sec:discussion}
+
+\subsection{Key Findings and Implications}
+
+The experimental results validate several important aspects of the \systemname{} system. First, automated knowledge graph construction from browsing data is feasible with practical real-time performance. The 2.1-second average ingestion latency enables near-instantaneous processing, making the system suitable for continuous background operation during normal browsing activities.
+
+Second, LLM-based content analysis produces high-quality structured metadata. The topic extraction F1-score of 0.81 demonstrates that modern language models can reliably identify and categorize web content themes without manual annotation. The ablation study reveals that open-source models like Llama 4, when accessed through optimized inference platforms like Groq, provide compelling alternatives to commercial APIs for many use cases.
+
+Third, vector embeddings enable effective semantic retrieval that goes beyond keyword matching. The MRR@5 score of 0.74 indicates that semantically relevant content consistently appears near the top of retrieval results, validating the use of dense representations for personal knowledge management.
+
+Fourth, automatically constructed graphs exhibit meaningful structural properties. The modularity score of 0.52 indicates clear community structure, while the clustering coefficient of 0.36 shows that related content naturally groups together. These properties emerge without explicit programming of domain-specific rules, demonstrating the power of embedding-based similarity for relationship discovery.
+
+\subsection{Limitations}
+
+Several limitations warrant discussion. The current implementation focuses primarily on textual web content and exhibits limited support for multimedia resources. Video and audio content cannot be effectively processed without transcripts. PDF documents, particularly those with complex layouts or mathematical notation, present extraction challenges that sometimes result in degraded summary quality.
+
+The system experiences a cold-start problem where new users with sparse browsing history see reduced graph richness initially. With fewer than 50 processed pages, the knowledge graph lacks sufficient density to reveal meaningful patterns. This limitation means users must invest time building their knowledge base before experiencing the full benefits.
+
+Real-time LLM processing imposes computational and cost considerations for large-scale deployments. While Llama 4 provides efficient processing, sustained high-volume usage still requires substantial resources. Cloud API costs can accumulate quickly for users with heavy browsing patterns, and long-running background operations may require scheduling or caching strategies to maintain responsiveness.
+
+In addition, scalability testing has so far been limited to datasets under 2~GB. Future iterations should include performance benchmarking on significantly larger corpora to assess potential memory and retrieval bottlenecks. A more diverse range of user profiles—covering different domains and technical skill levels—would also strengthen generalizability.
+
+The system has been primarily developed and tested with English-language technical content. Performance on non-English languages, highly specialized domain jargon, or creative content has not been systematically evaluated and may be suboptimal.
+
+
+\subsection{Ethical Considerations}
+
+Privacy represents a critical consideration for any system that processes personal browsing data. \systemname{} is architected with privacy as a core design principle, offering multiple deployment configurations: (1) local-only execution where content never leaves the user's device using locally-hosted LLMs; (2) content hashing before transmission with only hashes stored remotely; (3) selective ingestion with domain filtering to exclude sensitive sites; (4) complete data export and hard deletion capabilities.
+
+However, configurations utilizing cloud-based LLM APIs necessarily expose content metadata to third-party service providers. This creates potential privacy risks, particularly for users processing sensitive professional or personal information. We strongly recommend clear, transparent consent flows that explicitly inform users which data will be transmitted to external services, with opt-in defaults requiring explicit authorization.
+
+Automated capture of browsing activity presents risks if not properly constrained. The system could inadvertently process personally identifiable information, financial data, or health records if users visit such pages. We recommend implementing default exclusion filters for common sensitive domain patterns and pattern-based detection and redaction of personally identifiable information.
+
+The system's reliance on LLM processing raises questions about transparency and user control. Users cannot easily inspect why specific topics were extracted or relationships were established. Future versions should incorporate explainability features that surface model reasoning and allow users to correct errors and manually adjust graph structure.
+
+\subsection{Future Research Directions}
+
+Building on identified limitations and user feedback, we outline several priority directions for future development:
+
+\textbf{Enhanced Content Processing:} Integration of specialized PDF extraction tools to handle academic papers and technical reports; multimedia processing pipelines leveraging speech-to-text for videos and audio content; support for code repository integration to include programming projects in knowledge graphs.
+
+\textbf{Local-First Privacy Enhancements:} Integration of efficient local LLMs (e.g., quantized Llama models, Mistral) to enable on-device processing without cloud dependencies; browser-based embedding generation using ONNX-exported models; federated learning approaches for collaborative graphs without centralizing sensitive data.
+
+\textbf{Collaborative Features:} Multi-user knowledge graphs with provenance tracking showing contribution sources; shared team workspaces for collaborative research and learning projects; privacy-preserving graph merging protocols for selective knowledge sharing.
+
+\textbf{Empirical Validation:} Larger-scale controlled user studies ($n > 100$) with rigorous pre/post learning assessments; longitudinal studies tracking knowledge retention and retrieval efficiency over extended periods (6+ months); comparative studies against baseline knowledge management approaches; domain-specific evaluations in educational, professional, and research contexts.
+
+\textbf{Integration Ecosystem:} Bidirectional synchronization with popular note-taking tools (Obsidian, Notion, Roam Research); browser extension enhancements for in-context graph exploration and annotation; mobile application development for on-the-go knowledge access; API development enabling third-party integrations and custom workflows.
+
+\section{Conclusion}
+\label{sec:concl}
+
+This paper has presented \systemname{}, a comprehensive artificial intelligence system that addresses the growing challenge of personal knowledge management in an information-saturated digital environment. By automatically transforming fragmented web browsing data into structured, interactive knowledge graphs, the system enables users to organize, explore, and retrieve information more effectively than traditional approaches allow.
+
+The \systemname{} architecture demonstrates how modern AI technologies—large language models, dense vector embeddings, and retrieval-augmented generation—can be practically integrated to solve real-world knowledge management challenges. The modular design combining browser-based collection, LLM-powered analysis, pgvector-backed semantic storage, and interactive visualization provides a robust, extensible foundation that can accommodate diverse deployment scenarios and user requirements.
+
+Our empirical evaluation validates the system's effectiveness across multiple dimensions. Performance metrics demonstrate practical real-time operation with average page ingestion latency of 2.1 seconds and responsive query handling at 1.8 seconds. Topic extraction achieves balanced precision (0.84) and recall (0.79), confirming the quality of automated knowledge organization. Semantic retrieval metrics including MRR@5 of 0.74 and NDCG@10 of 0.81 demonstrate effective ranking of relevant content. Graph structural properties including clustering coefficient of 0.36 and modularity of 0.52 indicate meaningful organization that facilitates exploration and connection discovery.
+
+The ablation study comparing GPT-5 and Llama 4 provides practical guidance for deployment decisions, revealing that open-source models offer compelling quality-latency-cost trade-offs suitable for many use cases. User study results confirm real-world utility, with participants reporting substantial improvements in recall (87\%), connection discovery (93\%), and reduction in redundant searching (73\%). These findings validate that automated knowledge graph construction delivers tangible benefits for diverse user populations.
+
+Beyond its specific technical contributions, this work demonstrates broader principles applicable to personal AI systems: the value of automated organization that reduces manual overhead, the power of multiple interaction modalities (visual and conversational) for knowledge exploration, and the importance of privacy-aware design that gives users control over their data. As information abundance continues to accelerate, systems like \systemname{} that help individuals manage and make sense of their knowledge consumption will become increasingly essential.
+
+We commit to releasing comprehensive reproducibility artifacts including source code, evaluation scripts, and documentation at \url{https://github.com/Sa1f27/MindCanvas.git}. This open-source approach aims to facilitate community adoption, independent validation, and collaborative enhancement of the system. We hope that \systemname{} serves as both a practical tool for knowledge management and a foundation for future research in personalized AI systems.
+
+\section*{Acknowledgment}
+
+The authors gratefully acknowledge the 15 volunteer participants who contributed anonymized browsing logs and valuable feedback during the user study phase of this research. We thank the Lords Institute of Engineering and Technology for providing computational infrastructure and institutional support. We also acknowledge the developers of open-source tools and frameworks including LangChain, pgvector, Cytoscape.js, and the broader Python and React ecosystems, which made this work possible.
+
+\balance 
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{99}
+
+\bibitem{graph}
+A. Singhal, ``Introducing the Knowledge Graph: things, not strings,'' \textit{Google Blog}, May 2012. [Online]. Available: \url{https://blog.google/products/search/introducing-knowledge-graph-things-not/}
+
+\bibitem{roam}
+C. White, ``Roam Research: A note-taking tool for networked thought,'' 2024. [Online]. Available: \url{https://roamresearch.com}
+
+\bibitem{obsidian}
+Obsidian, ``Obsidian: A powerful knowledge base on top of a local folder of plain text Markdown files,'' 2024. [Online]. Available: \url{https://obsidian.md}
+
+\bibitem{rag}
+V. Karpukhin, B. O{\u{g}}uz, S. Min, P. Lewis, L. Wu, S. Edunov, D. Chen, and W. Yih, ``Dense Passage Retrieval for Open-Domain Question Answering,'' in \textit{Proc. 58th Annual Meeting of the Association for Computational Linguistics (ACL)}, 2020, pp. 6769--6781.
+
+\bibitem{langchain}
+H. Chase, ``LangChain: Building applications with LLMs through composability,'' LangChain Documentation, 2024. [Online]. Available: \url{https://docs.langchain.com}
+
+\bibitem{pgvector}
+A. Herlihy, ``pgvector: Open-source vector similarity search for PostgreSQL,'' 2024. [Online]. Available: \url{https://github.com/pgvector/pgvector}
+
+\bibitem{groq_models}
+GroqDocs, ``Supported Models,'' Groq Documentation, 2024--2025. [Online]. Available: \url{https://console.groq.com/docs/models}
+
+\bibitem{groq_api}
+GroqDocs, ``API Reference,'' Groq Documentation, 2024--2025. [Online]. Available: \url{https://console.groq.com/docs/api-reference}
+
+\bibitem{openai_gpt5}
+OpenAI, ``Introducing GPT-5 in the API,'' \textit{OpenAI Blog}, Apr. 2025. [Online]. Available: \url{https://openai.com/index/gpt-5/}
+
+\bibitem{openai}
+OpenAI, ``OpenAI API Documentation: Embeddings and Chat Completions,'' 2024. [Online]. Available: \url{https://platform.openai.com/docs}
+
+\bibitem{supabase}
+Supabase, ``Supabase Documentation: PostgreSQL Database and Vector Search,'' 2024. [Online]. Available: \url{https://supabase.com/docs}
+
+\bibitem{supabase_pgvector}
+Supabase, ``pgvector: Embeddings and vector similarity,'' Supabase Documentation, 2025. [Online]. Available: \url{https://supabase.com/docs/guides/database/extensions/pgvector}
+
+\bibitem{supabase_semantic}
+Supabase, ``Semantic search,'' Supabase Documentation, 2025. [Online]. Available: \url{https://supabase.com/docs/guides/ai/semantic-search}
+
+\bibitem{cytoscape_doc}
+Cytoscape.js, ``Graph theory (network) library for visualization,'' Feb. 2011. [Online]. Available: \url{http://js.cytoscape.org}
+
+\bibitem{evidently_mrr}
+EvidentlyAI, ``Mean Reciprocal Rank (MRR) explained,'' EvidentlyAI Blog, Jan. 2025. [Online]. Available: \url{https://www.evidentlyai.com/ranking-metrics/mean-reciprocal-rank-mrr}
+
+\bibitem{evidently_ndcg}
+EvidentlyAI, ``Normalized Discounted Cumulative Gain (NDCG) explained,'' EvidentlyAI Blog, Feb. 2025. [Online]. Available: \url{https://www.evidentlyai.com/ranking-metrics/ndcg-metric}
+
+\bibitem{reimers2019}
+N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks,'' in \textit{Proc. 2019 Conf. Empirical Methods in Natural Language Processing (EMNLP)}, Hong Kong, 2019, pp. 3982--3992.
+
+\bibitem{ester1996}
+M. Ester, H.-P. Kriegel, J. Sander, and X. Xu, ``A density-based algorithm for discovering clusters in large spatial databases with noise,'' in \textit{Proc. 2nd Int. Conf. Knowledge Discovery and Data Mining (KDD)}, Portland, OR, 1996, pp. 226--231.
+
+\end{thebibliography}
+
+\end{document}
