@@ -11,9 +11,11 @@ import os
 import logging
 import re
 import hashlib
-from typing import List, Dict, Any
+import time
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from urllib.parse import urlparse
+from collections import defaultdict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +38,18 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BATCH_SIZE = 10
 MAX_CONTENT_LENGTH = 1500
 MIN_CONTENT_LENGTH = 30
+
+# Concurrency / rate-limit controls
+FETCH_CONCURRENCY = 8          # max simultaneous HTTP fetches
+FETCH_TIMEOUT     = 12.0       # seconds per request
+FETCH_RETRIES     = 2          # retries on transient errors (5xx, timeout)
+DOMAIN_DELAY      = 0.5        # seconds between requests to the same domain
+OPENAI_MAX_RETRY  = 4          # max retries on OpenAI 429 / 5xx
+OPENAI_RETRY_BASE = 2.0        # exponential back-off base (seconds)
+
+# Semaphore — created at startup so it lives on the event loop
+_fetch_semaphore: Optional[asyncio.Semaphore] = None
+_domain_last_hit: Dict[str, float] = defaultdict(float)  # domain → last request timestamp
 
 # Excluded domains
 EXCLUDED_DOMAINS = {
@@ -115,18 +129,60 @@ def calculate_quality_score(title: str, content: str, url: str) -> int:
     return max(1, min(10, score))
 
 # Content extraction
+_HEADERS = {
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/124.0.0.0 Safari/537.36'
+    ),
+    'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+}
+
 async def fetch_html(url: str) -> str:
-    """Fetch HTML content from URL"""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; MindCanvas/1.0)'
-            })
-            response.raise_for_status()
-            return response.text
-    except Exception as e:
-        logger.error(f"Failed to fetch {url}: {e}")
-        return ""
+    """Fetch HTML with concurrency limiting, per-domain throttling, and retry."""
+    global _fetch_semaphore
+    if _fetch_semaphore is None:
+        _fetch_semaphore = asyncio.Semaphore(FETCH_CONCURRENCY)
+
+    domain = urlparse(url).netloc.lower()
+
+    async with _fetch_semaphore:
+        # Per-domain rate limiting
+        elapsed = time.monotonic() - _domain_last_hit[domain]
+        if elapsed < DOMAIN_DELAY:
+            await asyncio.sleep(DOMAIN_DELAY - elapsed)
+
+        for attempt in range(FETCH_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=FETCH_TIMEOUT,
+                    follow_redirects=True,
+                    max_redirects=5,
+                ) as client:
+                    resp = await client.get(url, headers=_HEADERS)
+                    _domain_last_hit[domain] = time.monotonic()
+
+                    # Treat 403/401/410 as permanent failures — don't retry
+                    if resp.status_code in (401, 403, 404, 410):
+                        logger.warning(f"Permanent {resp.status_code} for {url}")
+                        return ""
+
+                    resp.raise_for_status()
+                    return resp.text
+
+            except (httpx.TimeoutException, httpx.ConnectError) as e:
+                if attempt < FETCH_RETRIES:
+                    wait = 1.5 ** attempt
+                    logger.warning(f"Retry {attempt+1}/{FETCH_RETRIES} for {url} ({e})")
+                    await asyncio.sleep(wait)
+                else:
+                    logger.error(f"Failed to fetch {url} after {FETCH_RETRIES+1} attempts: {e}")
+            except Exception as e:
+                logger.error(f"Failed to fetch {url}: {e}")
+                break
+
+    return ""
 
 def extract_content(html: str, url: str, title: str) -> Dict[str, str]:
     """Extract main content from HTML"""
@@ -216,18 +272,29 @@ Return a JSON object in this exact shape:
 The "items" array must have exactly {len(batch)} entries."""
 
         if self.openai_client:
-            try:
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-4.1-nano-2025-04-14",
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=150 * len(batch),
-                    temperature=0.1,
-                    response_format={"type": "json_object"}
-                )
-                raw = response.choices[0].message.content.strip()
-                return self._parse_batch_response(batch, raw)
-            except Exception as e:
-                logger.warning(f"OpenAI batch failed: {e}")
+            for attempt in range(OPENAI_MAX_RETRY):
+                try:
+                    response = await asyncio.to_thread(
+                        self.openai_client.chat.completions.create,
+                        model="gpt-5.4-mini",
+                        messages=[{"role": "user", "content": prompt}],
+                        max_completion_tokens=150 * len(batch),
+                        temperature=0.1,
+                        response_format={"type": "json_object"},
+                    )
+                    raw = response.choices[0].message.content.strip()
+                    return self._parse_batch_response(batch, raw)
+                except Exception as e:
+                    err_str = str(e)
+                    is_rate_limit = "429" in err_str or "rate_limit" in err_str.lower()
+                    is_server_err = "5" in err_str[:3]
+                    if (is_rate_limit or is_server_err) and attempt < OPENAI_MAX_RETRY - 1:
+                        wait = OPENAI_RETRY_BASE ** (attempt + 1)
+                        logger.warning(f"OpenAI error (attempt {attempt+1}), retrying in {wait:.1f}s: {e}")
+                        await asyncio.sleep(wait)
+                    else:
+                        logger.warning(f"OpenAI batch failed after {attempt+1} attempts: {e}")
+                        break
 
         return [self._basic_process(item) for item in batch]
 
@@ -360,19 +427,32 @@ async def process_urls(items: List[HistoryItem]) -> Dict[str, int]:
         return {"processed": existing_count, "total": len(items), "new": 0}
     
     logger.info(f"Processing {len(new_items)} new URLs")
-    
-    # Fetch and extract content
-    content_items = []
-    for item in new_items:
+
+    # Fetch all URLs concurrently (semaphore limits actual concurrency)
+    async def fetch_one(item: HistoryItem) -> Optional[Dict]:
         html = await fetch_html(item.url)
         if html:
             extracted = extract_content(html, item.url, item.title)
             if extracted:
                 extracted['visit_time'] = item.lastVisitTime
-                content_items.append(extracted)
-    
-    logger.info(f"Extracted content from {len(content_items)} URLs")
-    
+                return extracted
+        # Fallback: keep the item with title-only content so no node is lost
+        if item.title and item.title.strip():
+            return {
+                'url': item.url,
+                'title': item.title.strip(),
+                'content': item.title.strip(),
+                'content_type': 'Web Content',
+                'visit_time': item.lastVisitTime,
+                'domain': urlparse(item.url).netloc,
+            }
+        return None
+
+    fetch_results = await asyncio.gather(*[fetch_one(item) for item in new_items])
+    content_items = [r for r in fetch_results if r is not None]
+
+    logger.info(f"Extracted content from {len(content_items)}/{len(new_items)} URLs")
+
     if not content_items:
         return {"processed": existing_count, "total": len(items), "new": 0}
     
@@ -788,22 +868,27 @@ async def _ai_graph_structure(items: list) -> dict:
             "type": item.get('content_type', ''),
         })
 
-    prompt = f"""You are a knowledge graph architect. Given these content nodes, decide:
-1. How to cluster them into meaningful semantic groups.
-2. Which pairs of nodes should be connected by an edge.
+    prompt = f"""You are a knowledge graph architect specializing in fine-grained topic taxonomy.
+Given these content nodes, assign each to a precise semantic cluster and identify meaningful connections.
+
+CRITICAL SEPARATION RULE — different technologies MUST be different clusters:
+  WRONG: {{"Python Basics": ["Python tutorial", "Docker tutorial", "Git intro", "FastAPI guide"]}}
+  RIGHT: {{"Python Core": ["Python tutorial"], "Containerization": ["Docker tutorial"], "Version Control": ["Git intro"], "Web APIs": ["FastAPI guide"]}}
 
 CLUSTERING RULES:
-- Create 3–12 clusters based on distinct themes.
-- Cluster name: short label (2–4 words), e.g. "Python Programming", "Machine Learning".
-- Every node must be in exactly one cluster.
-- Base decisions on title + summary, not just keywords.
-- Closely related nodes (e.g. two Python tutorials) MUST share a cluster.
+- Create 5–18 clusters based on SPECIFIC technology/topic themes.
+- Cluster names must be specific (2–4 words): "Python Core", "Docker & DevOps", "Machine Learning", "Web Frontend", "Databases", "Cybersecurity".
+- Broad labels like "Programming" or "Development Tools" are FORBIDDEN — always be specific.
+- Every node belongs to exactly one cluster.
+- Technologies that are separate ecosystems get separate clusters: Python ≠ Docker ≠ Git ≠ SQL ≠ JavaScript ≠ TypeScript ≠ React ≠ Kubernetes.
+- Standard library / language tutorials → language cluster. Frameworks with their own ecosystem → dedicated cluster.
+- When two topics feel "related but different" → make two clusters, not one.
 
 EDGE RULES:
-- Only connect nodes that share a meaningful semantic relationship.
-- Aim for 2–4 edges per node on average — not too sparse, not a hairball.
-- Prefer connecting nodes within the same cluster, but cross-cluster edges are fine when genuinely related.
-- Do NOT add edges just because nodes share a generic topic like "programming" or "learning".
+- Connect nodes that share a direct semantic dependency or content overlap.
+- Aim for 2–4 edges per node — not too sparse, not a hairball.
+- Cross-cluster edges are fine when genuinely related (e.g. Python → NumPy, Docker → Kubernetes).
+- Never add an edge just because two nodes are both about "programming" or "learning".
 - Each edge must have a short reason (5–10 words).
 
 Nodes:
@@ -830,11 +915,11 @@ Respond with a single JSON object:
         client = OpenAI(api_key=OPENAI_API_KEY)
         response = await asyncio.to_thread(
             client.chat.completions.create,
-            model="gpt-4.1-mini-2025-04-14",
+            model="gpt-5.4-mini",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.0,
-            max_tokens=4000,
+            max_completion_tokens=8000,
         )
 
         result = json.loads(response.choices[0].message.content)
@@ -860,7 +945,7 @@ Respond with a single JSON object:
         ]
 
         logger.info(
-            f"✅ AI graph (gpt-4.1-mini): {len(clusters_list)} clusters, "
+            f"✅ AI graph (gpt-5.4-mini): {len(clusters_list)} clusters, "
             f"{len(id_to_cluster)} nodes, {len(valid_edges)} edges"
         )
         return {"id_to_cluster": id_to_cluster, "edges": valid_edges}

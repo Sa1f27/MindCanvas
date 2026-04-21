@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, RotateCcw, Download, Send } from 'lucide-react';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -600,7 +601,7 @@ const ChatbotPanel = ({ graphData }) => {
       {/* Header */}
       <Header>
         <HeaderLeft>
-          <AiAvatar>✦</AiAvatar>
+          <AiAvatar><Sparkles size={14} /></AiAvatar>
           <HeaderInfo>
             <HeaderTitle>MindCanvas AI</HeaderTitle>
             <HeaderStatus $online={isOnline}>
@@ -616,7 +617,7 @@ const ChatbotPanel = ({ graphData }) => {
             disabled={isLoading}
             title="Clear conversation"
           >
-            ↺
+            <RotateCcw size={13} />
           </IconBtn>
           <IconBtn
             whileTap={{ scale: 0.9 }}
@@ -624,7 +625,7 @@ const ChatbotPanel = ({ graphData }) => {
             disabled={messages.length === 0}
             title="Export chat"
           >
-            ↓
+            <Download size={13} />
           </IconBtn>
         </HeaderActions>
       </Header>
@@ -668,7 +669,7 @@ const ChatbotPanel = ({ graphData }) => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.22 }}
               >
-                <AsstIcon>✦</AsstIcon>
+                <AsstIcon><Sparkles size={12} /></AsstIcon>
                 <AsstBubbleWrap>
                   <AsstBubble>
                     {renderMarkdown(msg.content)}
@@ -712,7 +713,7 @@ const ChatbotPanel = ({ graphData }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <AsstIcon>✦</AsstIcon>
+            <AsstIcon><Sparkles size={12} /></AsstIcon>
             <TypingBubble>
               <Dot $d="0s" />
               <Dot $d="0.2s" />
@@ -760,7 +761,7 @@ const ChatbotPanel = ({ graphData }) => {
             onClick={() => sendMessage(inputValue)}
             disabled={isLoading || !inputValue.trim()}
           >
-            →
+            <Send size={15} />
           </SendBtn>
         </InputRow>
       </InputArea>

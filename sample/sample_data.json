@@ -8,7 +8,6 @@
   { "url": "https://docs.python.org/3/tutorial/modules.html", "title": "Modules — Python Tutorial", "lastVisitTime": 1708308000000 },
   { "url": "https://docs.python.org/3/tutorial/controlflow.html", "title": "Control Flow Tools — Python Tutorial", "lastVisitTime": 1708309000000 },
   { "url": "https://docs.python.org/3/howto/functional.html", "title": "Functional Programming HOWTO — Python Documentation", "lastVisitTime": 1708314000000 },
-  { "url": "https://realpython.com/python-decorators/", "title": "Primer on Python Decorators — Real Python", "lastVisitTime": 1708315000000 },
   { "url": "https://peps.python.org/pep-0008/", "title": "PEP 8 — Style Guide for Python Code", "lastVisitTime": 1708316000000 },
   { "url": "https://docs.python.org/3/library/collections.html", "title": "collections — Container Datatypes — Python Documentation", "lastVisitTime": 1708317000000 },
 
@@ -32,7 +31,6 @@
   { "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules", "title": "JavaScript Modules — MDN Web Docs", "lastVisitTime": 1708327000000 },
   { "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise", "title": "Promise — JavaScript Reference — MDN", "lastVisitTime": 1708328000000 },
   { "url": "https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Flexbox", "title": "Flexbox — CSS Layout — MDN Web Docs", "lastVisitTime": 1708329000000 },
-
   { "url": "https://www.typescriptlang.org/docs/handbook/intro.html", "title": "TypeScript Handbook Introduction", "lastVisitTime": 1708325000000 },
 
   { "url": "https://fastapi.tiangolo.com/tutorial/", "title": "FastAPI Tutorial — User Guide", "lastVisitTime": 1708350000000 },
@@ -57,33 +55,28 @@
   { "url": "https://refactoring.guru/design-patterns", "title": "Design Patterns — Refactoring Guru", "lastVisitTime": 1708380000000 },
   { "url": "https://martinfowler.com/articles/microservices.html", "title": "Microservices — Martin Fowler", "lastVisitTime": 1708381000000 },
 
-  { "url": "https://www.coursera.org/articles/what-is-cybersecurity", "title": "What Is Cybersecurity — Coursera", "lastVisitTime": 1708440000000 },
+  { "url": "https://en.wikipedia.org/wiki/Computer_security", "title": "Computer Security — Wikipedia", "lastVisitTime": 1708440000000 },
   { "url": "https://owasp.org/www-project-top-ten/", "title": "OWASP Top Ten Web Application Security Risks", "lastVisitTime": 1708441000000 },
   { "url": "https://www.cloudflare.com/learning/security/what-is-a-firewall/", "title": "What Is a Firewall — Cloudflare Learning", "lastVisitTime": 1708442000000 },
 
-  { "url": "https://learning.sap.com/learning-journeys/acquire-core-abap-skills", "title": "Acquire Core ABAP Skills — SAP Learning", "lastVisitTime": 1708400000000 },
-  { "url": "https://help.sap.com/docs/sap-s-4hana-cloud", "title": "SAP S/4HANA Cloud Documentation", "lastVisitTime": 1708401000000 },
-  { "url": "https://help.sap.com/docs/SAP_NETWEAVER", "title": "SAP NetWeaver — SAP Help Portal", "lastVisitTime": 1708402000000 },
-  { "url": "https://community.sap.com/topics/fiori", "title": "SAP Fiori — SAP Community", "lastVisitTime": 1708403000000 },
-
   { "url": "https://www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases-(cvds)", "title": "Cardiovascular Diseases — WHO Fact Sheet", "lastVisitTime": 1708410000000 },
-  { "url": "https://www.mayoclinic.org/diseases-conditions/diabetes/symptoms-causes/syc-20371444", "title": "Diabetes — Symptoms and Causes — Mayo Clinic", "lastVisitTime": 1708411000000 },
-  { "url": "https://medlineplus.gov/immunesystemanddisorders.html", "title": "Immune System and Disorders — MedlinePlus", "lastVisitTime": 1708412000000 },
+  { "url": "https://en.wikipedia.org/wiki/Diabetes", "title": "Diabetes — Wikipedia", "lastVisitTime": 1708411000000 },
+  { "url": "https://en.wikipedia.org/wiki/Immune_system", "title": "Immune System — Wikipedia", "lastVisitTime": 1708412000000 },
   { "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7150208/", "title": "John Snow and Waterborne Disease — PMC Research", "lastVisitTime": 1708413000000 },
 
-  { "url": "https://www.khanacademy.org/science/biology/human-biology/neurology/v/anatomy-of-a-neuron", "title": "Anatomy of a Neuron — Khan Academy", "lastVisitTime": 1708420000000 },
-  { "url": "https://www.nature.com/scitable/topicpage/cell-division-mitosis-and-meiosis-231/", "title": "Cell Division: Mitosis and Meiosis — Nature Scitable", "lastVisitTime": 1708421000000 },
-  { "url": "https://www.khanacademy.org/science/biology/gene-expression-central-dogma", "title": "Gene Expression and the Central Dogma — Khan Academy", "lastVisitTime": 1708422000000 },
+  { "url": "https://en.wikipedia.org/wiki/Neuron", "title": "Neuron — Wikipedia", "lastVisitTime": 1708420000000 },
+  { "url": "https://en.wikipedia.org/wiki/Cell_division", "title": "Cell Division — Wikipedia", "lastVisitTime": 1708421000000 },
+  { "url": "https://en.wikipedia.org/wiki/Central_dogma_of_molecular_biology", "title": "Gene Expression and the Central Dogma — Wikipedia", "lastVisitTime": 1708422000000 },
 
-  { "url": "https://www.investopedia.com/terms/s/stockmarket.asp", "title": "What Is the Stock Market and How Does It Work — Investopedia", "lastVisitTime": 1708430000000 },
-  { "url": "https://www.investopedia.com/terms/m/mutualfund.asp", "title": "What Is a Mutual Fund — Investopedia", "lastVisitTime": 1708431000000 },
-  { "url": "https://www.investopedia.com/terms/c/cryptocurrency.asp", "title": "What Is Cryptocurrency — Investopedia", "lastVisitTime": 1708432000000 },
-  { "url": "https://www.investopedia.com/terms/b/blockchain.asp", "title": "What Is Blockchain Technology — Investopedia", "lastVisitTime": 1708433000000 },
+  { "url": "https://en.wikipedia.org/wiki/Stock_market", "title": "Stock Market — Wikipedia", "lastVisitTime": 1708430000000 },
+  { "url": "https://en.wikipedia.org/wiki/Mutual_fund", "title": "Mutual Fund — Wikipedia", "lastVisitTime": 1708431000000 },
+  { "url": "https://en.wikipedia.org/wiki/Cryptocurrency", "title": "Cryptocurrency — Wikipedia", "lastVisitTime": 1708432000000 },
+  { "url": "https://en.wikipedia.org/wiki/Blockchain", "title": "Blockchain — Wikipedia", "lastVisitTime": 1708433000000 },
 
   { "url": "https://ubuntu.com/tutorials/command-line-for-beginners", "title": "Command Line for Beginners — Ubuntu", "lastVisitTime": 1708390000000 },
 
-  { "url": "https://www.britannica.com/science/quantum-mechanics-physics", "title": "Quantum Mechanics — Britannica", "lastVisitTime": 1708460000000 },
+  { "url": "https://en.wikipedia.org/wiki/Quantum_mechanics", "title": "Quantum Mechanics — Wikipedia", "lastVisitTime": 1708460000000 },
   { "url": "https://science.nasa.gov/climate-change/effects/", "title": "The Effects of Climate Change — NASA", "lastVisitTime": 1708461000000 },
-  { "url": "https://www.britannica.com/science/solar-system", "title": "Solar System — Britannica", "lastVisitTime": 1708462000000 },
-  { "url": "https://www.britannica.com/science/black-hole", "title": "Black Hole — Britannica", "lastVisitTime": 1708463000000 }
+  { "url": "https://en.wikipedia.org/wiki/Solar_System", "title": "Solar System — Wikipedia", "lastVisitTime": 1708462000000 },
+  { "url": "https://en.wikipedia.org/wiki/Black_hole", "title": "Black Hole — Wikipedia", "lastVisitTime": 1708463000000 }
 ]

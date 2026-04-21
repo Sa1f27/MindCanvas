@@ -1,4 +1,4 @@
-// KnowledgeGraphViewer — neuron-sphere nodes, premium glow, fcose layout
+// KnowledgeGraphViewer — fixed layout, no overlap, dual view modes
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import cytoscape from 'cytoscape';
@@ -6,7 +6,7 @@ import fcose from 'cytoscape-fcose';
 
 cytoscape.use(fcose);
 
-// ─── Styled Components ────────────────────────────────────────────────────────
+// ─── Styled ───────────────────────────────────────────────────────────────────
 
 const Wrapper = styled.div`
   position: relative;
@@ -21,9 +21,7 @@ const CyContainer = styled.div`
   height: 100%;
 `;
 
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
+const spin = keyframes`to { transform: rotate(360deg); }`;
 
 const LoadingPill = styled.div`
   position: absolute;
@@ -75,18 +73,34 @@ const CountBadge = styled.div`
   letter-spacing: 0.2px;
 `;
 
-// ─── Colour Palette ───────────────────────────────────────────────────────────
+const LayoutBadge = styled.div`
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(11, 11, 24, 0.78);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 10px;
+  color: rgba(165, 180, 252, 0.6);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  z-index: 5;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  font-weight: 600;
+`;
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
 
 const CLUSTER_COLORS = [
-  '#6366f1', '#8b5cf6', '#06b6d4', '#10b981',
-  '#f59e0b', '#ef4444', '#ec4899', '#14b8a6',
-  '#f97316', '#a855f7', '#22c55e', '#3b82f6',
+  '#6366f1', '#06b6d4', '#10b981', '#f59e0b',
+  '#ec4899', '#8b5cf6', '#14b8a6', '#f97316',
+  '#22c55e', '#3b82f6', '#a855f7', '#ef4444',
 ];
 
-// ─── Node SVG generator ───────────────────────────────────────────────────────
-// Holographic orb: dark core → colored rim light.
-// Avoids white-highlight "plastic ball" look — instead uses the cluster colour
-// as the light source, creating a sci-fi bioluminescent cell appearance.
+// ─── Node SVG ─────────────────────────────────────────────────────────────────
 
 function makeNodeSvg(color) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
@@ -111,10 +125,10 @@ function makeNodeSvg(color) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
-// ─── Cluster key from node ────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function clusterKey(node) {
-  if (node.cluster) return node.cluster;
+  if (node.cluster && node.cluster !== 'Unknown') return node.cluster;
   if (node.type && node.type !== 'Unknown') return node.type;
   if (node.content_type && node.content_type !== 'Unknown') return node.content_type;
   const topics = node.topics || node.key_topics || [];
@@ -122,122 +136,196 @@ function clusterKey(node) {
   return 'General';
 }
 
-// ─── Organic cluster shape placer ────────────────────────────────────────────
-// Returns [{x,y}] for every node in the cluster using different geometric
-// patterns per size so clusters look like distinct neural structures, not
-// identical circles.
-
-function computeClusterShape(size, cx, cy, radius, clusterIdx) {
-  const positions = [];
-  // Unique starting rotation per cluster — no two clusters face the same way
-  const rot = (clusterIdx * 53 + 17) * (Math.PI / 180);
-  const jit = (s) => (Math.random() - 0.5) * 2 * s;
-
-  if (size === 1) {
-    positions.push({ x: cx + jit(4), y: cy + jit(4) });
-
-  } else if (size === 2) {
-    // Dumbbell along the rotation axis
-    const d = radius * 0.6;
-    positions.push({ x: cx - d * Math.cos(rot) + jit(5), y: cy - d * Math.sin(rot) + jit(5) });
-    positions.push({ x: cx + d * Math.cos(rot) + jit(5), y: cy + d * Math.sin(rot) + jit(5) });
-
-  } else if (size === 3) {
-    // Equilateral triangle
-    for (let i = 0; i < 3; i++) {
-      const ang = rot + (i / 3) * 2 * Math.PI - Math.PI / 2;
-      positions.push({ x: cx + radius * Math.cos(ang) + jit(7), y: cy + radius * Math.sin(ang) + jit(7) });
-    }
-
-  } else if (size === 4) {
-    // Diamond (rotated square)
-    for (let i = 0; i < 4; i++) {
-      const ang = rot + (i / 4) * 2 * Math.PI + Math.PI / 4;
-      positions.push({ x: cx + radius * Math.cos(ang) + jit(7), y: cy + radius * Math.sin(ang) + jit(7) });
-    }
-
-  } else if (size === 5) {
-    // Pentagon
-    for (let i = 0; i < 5; i++) {
-      const ang = rot + (i / 5) * 2 * Math.PI - Math.PI / 2;
-      positions.push({ x: cx + radius * Math.cos(ang) + jit(8), y: cy + radius * Math.sin(ang) + jit(8) });
-    }
-
-  } else if (size === 6) {
-    // Hexagon
-    for (let i = 0; i < 6; i++) {
-      const ang = rot + (i / 6) * 2 * Math.PI;
-      positions.push({ x: cx + radius * Math.cos(ang) + jit(8), y: cy + radius * Math.sin(ang) + jit(8) });
-    }
-
-  } else if (size <= 9) {
-    // Neuron: 1 central hub (soma) + irregular outer dendrite ring
-    positions.push({ x: cx + jit(5), y: cy + jit(5) }); // soma
-    const outer = size - 1;
-    for (let i = 0; i < outer; i++) {
-      const ang = rot + (i / outer) * 2 * Math.PI;
-      const r = radius * (0.85 + Math.random() * 0.25); // organic variation
-      positions.push({ x: cx + r * Math.cos(ang) + jit(9), y: cy + r * Math.sin(ang) + jit(9) });
-    }
-
-  } else if (size <= 16) {
-    // Double-ring: inner polygon + offset outer ring (two shells of a neural cluster)
-    const innerCount = Math.round(size * 0.36);
-    const outerCount = size - innerCount;
-    const innerR = radius * 0.45;
-    for (let i = 0; i < innerCount; i++) {
-      const ang = rot + (i / innerCount) * 2 * Math.PI;
-      positions.push({ x: cx + innerR * Math.cos(ang) + jit(7), y: cy + innerR * Math.sin(ang) + jit(7) });
-    }
-    for (let i = 0; i < outerCount; i++) {
-      const ang = rot + (Math.PI / outerCount) + (i / outerCount) * 2 * Math.PI;
-      const r = radius * (0.88 + Math.random() * 0.2);
-      positions.push({ x: cx + r * Math.cos(ang) + jit(10), y: cy + r * Math.sin(ang) + jit(10) });
-    }
-
-  } else {
-    // Golden-angle phyllotaxis spiral — organic sunflower / dendritic mass
-    const phi = 137.508 * (Math.PI / 180);
-    const scale = (radius * 1.2) / Math.sqrt(size);
-    for (let i = 0; i < size; i++) {
-      const r = scale * Math.sqrt(i + 1);
-      const ang = i * phi + rot;
-      positions.push({ x: cx + r * Math.cos(ang) + jit(6), y: cy + r * Math.sin(ang) + jit(6) });
-    }
-  }
-
-  return positions;
+// Layout radius consistent with rendered node size (12px avg) + gap
+function safeClusterRadius(nodeCount, avgNodeSize = 12, gap = 10) {
+  if (nodeCount <= 1) return 0;
+  return Math.max(40, (nodeCount * (avgNodeSize + gap)) / (2 * Math.PI));
 }
 
-// ─── Phyllotaxis cluster-centre placement ─────────────────────────────────────
+// Fit all content nodes and enforce a comfortable minimum zoom atomically
+function smartFit(cy) {
+  if (!cy) return;
+  try {
+    const content = cy.nodes().not('[?isLabel]');
+    if (content.length === 0) return;
+    cy.fit(content, 55);
+    const MIN_ZOOM = 0.78;
+    const z = cy.zoom();
+    if (z < MIN_ZOOM) {
+      const bb = content.boundingBox();
+      cy.viewport({
+        zoom: MIN_ZOOM,
+        pan: {
+          x: cy.width()  / 2 - ((bb.x1 + bb.x2) / 2) * MIN_ZOOM,
+          y: cy.height() / 2 - ((bb.y1 + bb.y2) / 2) * MIN_ZOOM,
+        },
+      });
+    }
+  } catch (_) {}
+}
 
-function computeClusterCenters(clusterKeys, W, H) {
+// ─── Layout: Cluster View ─────────────────────────────────────────────────────
+// Organic neural blobs arranged via phyllotaxis.
+// Canvas is scaled so clusters fit comfortably at ~80% zoom.
+
+function buildClusterPositions(clusterKeys, clusterNodeMap) {
+  // Smaller virtual canvas — nodes stay large relative to viewport
+  const VW = 1200, VH = 900;
+  const cx = VW / 2, cy = VH / 2;
+
+  // Compute per-cluster radius
+  const clusterRadii = {};
+  clusterKeys.forEach(k => {
+    clusterRadii[k] = safeClusterRadius(clusterNodeMap[k].length);
+  });
+  const maxR = Math.max(...Object.values(clusterRadii), 40);
+
+  // Spread: allow slight visual overlap between clusters so they stay close
+  // (maxR+60)*sqrt(n) ensures breathing room without excessive distance
   const n = clusterKeys.length;
-  if (n === 0) return {};
-  if (n === 1) return { [clusterKeys[0]]: { x: W / 2, y: H / 2 } };
-
-  const cx = W / 2;
-  const cy = H / 2;
+  const spread = Math.max((maxR + 60) * Math.sqrt(n), maxR * 2);
   const goldenAngle = 137.508 * (Math.PI / 180);
-  // Spread must be large enough so cluster rings don't overlap.
-  // Phyllotaxis min-neighbour distance ≈ maxR * sqrt(2/n).
-  // We need: 2 * maxInnerR < maxR * sqrt(2/n)  →  maxR grows with n.
-  const maxR = Math.min(W, H) * Math.max(0.44, Math.min(0.58, 0.34 + clusterKeys.length * 0.016));
-  const centers = {};
 
-  clusterKeys.forEach((key, i) => {
-    const r = maxR * Math.sqrt((i + 0.5) / n);
-    const theta = i * goldenAngle;
-    centers[key] = {
-      x: cx + r * Math.cos(theta),
-      y: cy + r * Math.sin(theta),
-    };
+  const centers = {};
+  clusterKeys.forEach((k, i) => {
+    if (n === 1) {
+      centers[k] = { x: cx, y: cy };
+    } else {
+      const r = spread * Math.sqrt((i + 0.5) / n);
+      const theta = i * goldenAngle;
+      centers[k] = { x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) };
+    }
   });
 
-  return centers;
+  // Place nodes within each cluster using organic shapes
+  const positions = {};
+  const jit = (s) => (Math.random() - 0.5) * 2 * s;
+
+  clusterKeys.forEach((k, clusterIdx) => {
+    const nodes = clusterNodeMap[k];
+    const size = nodes.length;
+    const R = clusterRadii[k];
+    const { x: ccx, y: ccy } = centers[k];
+    const rot = (clusterIdx * 53 + 17) * (Math.PI / 180);
+
+    let pts = [];
+
+    if (size === 1) {
+      pts.push({ x: ccx, y: ccy });
+    } else if (size === 2) {
+      const d = R * 0.7;
+      pts.push({ x: ccx - d * Math.cos(rot), y: ccy - d * Math.sin(rot) });
+      pts.push({ x: ccx + d * Math.cos(rot), y: ccy + d * Math.sin(rot) });
+    } else if (size <= 6) {
+      // Simple polygon
+      for (let i = 0; i < size; i++) {
+        const ang = rot + (i / size) * 2 * Math.PI;
+        pts.push({ x: ccx + R * Math.cos(ang) + jit(6), y: ccy + R * Math.sin(ang) + jit(6) });
+      }
+    } else if (size <= 12) {
+      // Neuron: hub + dendrite ring
+      pts.push({ x: ccx + jit(4), y: ccy + jit(4) }); // soma
+      const outer = size - 1;
+      for (let i = 0; i < outer; i++) {
+        const ang = rot + (i / outer) * 2 * Math.PI;
+        const r = R * (0.9 + Math.random() * 0.2);
+        pts.push({ x: ccx + r * Math.cos(ang) + jit(8), y: ccy + r * Math.sin(ang) + jit(8) });
+      }
+    } else if (size <= 20) {
+      // Double ring
+      const innerN = Math.round(size * 0.35);
+      const outerN = size - innerN;
+      const innerR = R * 0.42;
+      for (let i = 0; i < innerN; i++) {
+        const ang = rot + (i / innerN) * 2 * Math.PI;
+        pts.push({ x: ccx + innerR * Math.cos(ang) + jit(6), y: ccy + innerR * Math.sin(ang) + jit(6) });
+      }
+      for (let i = 0; i < outerN; i++) {
+        const ang = rot + (Math.PI / outerN) + (i / outerN) * 2 * Math.PI;
+        const r = R * (0.9 + Math.random() * 0.18);
+        pts.push({ x: ccx + r * Math.cos(ang) + jit(10), y: ccy + r * Math.sin(ang) + jit(10) });
+      }
+    } else {
+      // Phyllotaxis spiral for very large clusters
+      const phi = 137.508 * (Math.PI / 180);
+      const scale = R / Math.sqrt(size) * 1.3;
+      for (let i = 0; i < size; i++) {
+        const r = scale * Math.sqrt(i + 1);
+        const ang = i * phi + rot;
+        pts.push({ x: ccx + r * Math.cos(ang) + jit(5), y: ccy + r * Math.sin(ang) + jit(5) });
+      }
+    }
+
+    nodes.forEach((id, i) => {
+      positions[id] = pts[i] || { x: ccx, y: ccy };
+    });
+
+    // Store center for label
+    centers[k]._label = { x: ccx, y: ccy };
+  });
+
+  return { positions, centers };
 }
 
-// ─── Cytoscape stylesheet ─────────────────────────────────────────────────────
+// ─── Layout: Topic Map (Hierarchy) ───────────────────────────────────────────
+// Clusters arranged in rows by size (largest = top).
+// Nodes within each cluster laid out in a clean horizontal band,
+// sorted by quality score so best content is always leftmost.
+// Shows "how much" of each topic you've covered at a glance.
+
+function buildHierarchyPositions(clusterKeys, clusterNodeMap, nodeDataMap) {
+  const VW = 1200, VH = 900;
+
+  // Sort clusters by size descending
+  const sorted = [...clusterKeys].sort(
+    (a, b) => clusterNodeMap[b].length - clusterNodeMap[a].length
+  );
+
+  // Rows of up to 3 clusters
+  const MAX_PER_ROW = 3;
+  const rows = [];
+  for (let i = 0; i < sorted.length; i += MAX_PER_ROW) {
+    rows.push(sorted.slice(i, i + MAX_PER_ROW));
+  }
+
+  const totalRows = rows.length;
+  const rowH = (VH - 200) / totalRows;
+  const positions = {};
+  const centers = {};
+
+  rows.forEach((row, rowIdx) => {
+    const y = 120 + rowH * rowIdx + rowH * 0.5;
+    const colW = VW / (row.length + 1);
+
+    row.forEach((k, colIdx) => {
+      const ccx = colW * (colIdx + 1);
+      centers[k] = { x: ccx, y };
+
+      // Sort nodes in this cluster by quality score (best left)
+      const nodes = [...clusterNodeMap[k]].sort((a, b) => {
+        const qa = nodeDataMap[a]?.quality_score || nodeDataMap[a]?.quality || 5;
+        const qb = nodeDataMap[b]?.quality_score || nodeDataMap[b]?.quality || 5;
+        return qb - qa;
+      });
+
+      const nodeSpacing = Math.min(70, Math.max(40, (colW * 0.85) / Math.max(nodes.length, 1)));
+      const totalW = nodeSpacing * (nodes.length - 1);
+
+      nodes.forEach((id, i) => {
+        // Slight vertical stagger so it looks organic, not robotic
+        const stagger = (i % 2 === 0 ? -1 : 1) * 14;
+        positions[id] = {
+          x: ccx - totalW / 2 + nodeSpacing * i,
+          y: y + stagger,
+        };
+      });
+    });
+  });
+
+  return { positions, centers };
+}
+
+// ─── Cytoscape Stylesheet ─────────────────────────────────────────────────────
 
 function buildStylesheet() {
   return [
@@ -247,15 +335,11 @@ function buildStylesheet() {
         shape: 'ellipse',
         width: 'data(size)',
         height: 'data(size)',
-
-        // SVG neuron-sphere background — replaces flat solid color
-        'background-color': 'data(color)',      // fallback if image fails
-        'background-opacity': 0,               // hide solid bg; SVG takes over
+        'background-color': 'data(color)',
+        'background-opacity': 0,
         'background-image': 'data(bgImage)',
         'background-fit': 'cover',
         'background-image-opacity': 1,
-
-        // Label
         label: 'data(label)',
         'font-size': '9px',
         'font-family': "'Inter', 'Segoe UI', sans-serif",
@@ -265,23 +349,43 @@ function buildStylesheet() {
         'text-halign': 'center',
         'text-margin-y': 4,
         'text-outline-width': 2,
-        'text-outline-color': 'rgba(6,6,16,0.9)',
-        'text-max-width': '76px',
+        'text-outline-color': 'rgba(6,6,16,0.92)',
+        'text-max-width': '72px',
         'text-wrap': 'ellipsis',
-
-        // Outer aura / glow — coloured atmospheric halo
-        'shadow-blur': 36,
+        'shadow-blur': 32,
         'shadow-color': 'data(color)',
-        'shadow-opacity': 0.65,
+        'shadow-opacity': 0.6,
         'shadow-offset-x': 0,
         'shadow-offset-y': 0,
-
-        // Thin coloured rim (no white — SVG handles the rim look)
         'border-width': 0,
-        'border-opacity': 0,
-
-        'transition-property': 'shadow-blur, shadow-opacity, width, height, border-width',
+        'transition-property': 'shadow-blur, shadow-opacity, width, height',
         'transition-duration': '0.18s',
+      },
+    },
+    {
+      // Cluster label phantom nodes
+      selector: 'node[?isLabel]',
+      style: {
+        'background-opacity': 0,
+        'background-image': 'none',
+        'border-width': 0,
+        'shadow-blur': 0,
+        'shadow-opacity': 0,
+        width: 1,
+        height: 1,
+        label: 'data(label)',
+        'font-size': '13px',
+        'font-family': "'Inter', 'Segoe UI', sans-serif",
+        'font-weight': '700',
+        color: 'data(color)',
+        'text-opacity': 0.45,
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'text-outline-width': 0,
+        'text-max-width': '140px',
+        'text-wrap': 'ellipsis',
+        events: 'no',
+        'z-index': 0,
       },
     },
     {
@@ -297,25 +401,18 @@ function buildStylesheet() {
     },
     {
       selector: 'node.highlighted',
-      style: {
-        'shadow-blur': 48,
-        'shadow-opacity': 0.85,
-        'z-index': 15,
-      },
+      style: { 'shadow-blur': 48, 'shadow-opacity': 0.9, 'z-index': 15 },
     },
     {
       selector: 'node.dimmed',
-      style: {
-        opacity: 0.14,
-        'shadow-opacity': 0.03,
-      },
+      style: { opacity: 0.12, 'shadow-opacity': 0.02 },
     },
     {
       selector: 'edge',
       style: {
         width: 'data(weight)',
         'line-color': 'data(color)',
-        'line-opacity': 0.42,
+        'line-opacity': 0.38,
         'curve-style': 'bezier',
         'target-arrow-shape': 'none',
         'transition-property': 'line-opacity, width',
@@ -324,27 +421,21 @@ function buildStylesheet() {
     },
     {
       selector: 'edge.highlighted',
-      style: {
-        'line-opacity': 0.88,
-        width: 2.8,
-        'z-index': 10,
-      },
+      style: { 'line-opacity': 0.9, width: 2.6, 'z-index': 10 },
     },
     {
       selector: 'edge.dimmed',
-      style: {
-        'line-opacity': 0.02,
-      },
+      style: { 'line-opacity': 0.02 },
     },
   ];
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
-const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundClick }) => {
-  const cyRef           = useRef(null);
-  const containerRef    = useRef(null);
-  const timeoutsRef     = useRef([]);
+const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundClick, layout = 'fcose', recenterKey = 0 }) => {
+  const cyRef        = useRef(null);
+  const containerRef = useRef(null);
+  const timeoutsRef  = useRef([]);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
   const [nodeCount,  setNodeCount]  = useState(0);
   const [edgeCount,  setEdgeCount]  = useState(0);
@@ -354,10 +445,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     timeoutsRef.current = [];
   }, []);
 
-  const track = useCallback((id) => {
-    timeoutsRef.current.push(id);
-    return id;
-  }, []);
+  const track = useCallback((id) => { timeoutsRef.current.push(id); return id; }, []);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -367,17 +455,14 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
 
     if (rawNodes.length === 0) {
       if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
-      setNodeCount(0);
-      setEdgeCount(0);
-      setIsLayoutRunning(false);
+      setNodeCount(0); setEdgeCount(0); setIsLayoutRunning(false);
       return;
     }
 
-    // ── 1. Cluster colours ───────────────────────────────────────────────────
+    // ── Cluster metadata ─────────────────────────────────────────────────────
     const clusterSet = new Set(rawNodes.map(n => clusterKey(n)));
     const clusterKeys = Array.from(clusterSet);
     const clusterColorMap = {};
-    // Cache SVG per color so we don't regenerate for the same cluster
     const svgCache = {};
     clusterKeys.forEach((k, i) => {
       const color = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
@@ -385,77 +470,88 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       svgCache[k] = makeNodeSvg(color);
     });
 
-    // ── 2. Phyllotaxis centres ────────────────────────────────────────────────
-    const W = containerRef.current.offsetWidth  || 800;
-    const H = containerRef.current.offsetHeight || 600;
-    const centers = computeClusterCenters(clusterKeys, W, H);
+    // ── Group nodes by cluster ────────────────────────────────────────────────
+    const clusterNodeMap = {};
+    clusterKeys.forEach(k => { clusterNodeMap[k] = []; });
+    rawNodes.forEach(n => clusterNodeMap[clusterKey(n)].push(String(n.id)));
 
-    // ── 3. Degree pre-pass (count connections per node for size bonus) ────────
+    // ── Node data map (for quality-sort in hierarchy) ─────────────────────────
+    const nodeDataMap = {};
+    rawNodes.forEach(n => { nodeDataMap[String(n.id)] = n; });
+
+    // ── Degree map ────────────────────────────────────────────────────────────
     const degreeMap = {};
     rawNodes.forEach(n => { degreeMap[String(n.id)] = 0; });
     rawEdges.forEach(e => {
       const s = String(e.source || e.from);
       const t = String(e.target || e.to);
-      if (degreeMap[s] !== undefined) degreeMap[s]++;
-      if (degreeMap[t] !== undefined) degreeMap[t]++;
+      if (s in degreeMap) degreeMap[s]++;
+      if (t in degreeMap) degreeMap[t]++;
     });
     const maxDeg = Math.max(...Object.values(degreeMap), 1);
 
-    // ── 4. Pre-group nodes by cluster & pre-compute shaped positions ──────────
-    const clusterNodeMap = {};   // cluster -> [nodeId, ...]
-    clusterKeys.forEach(k => { clusterNodeMap[k] = []; });
-    rawNodes.forEach(node => clusterNodeMap[clusterKey(node)].push(String(node.id)));
+    // ── Compute positions based on layout mode ────────────────────────────────
+    const { positions, centers } = layout === 'dagre'
+      ? buildHierarchyPositions(clusterKeys, clusterNodeMap, nodeDataMap)
+      : buildClusterPositions(clusterKeys, clusterNodeMap);
 
-    const nodeClusterIndex = {}; // nodeId -> index within its cluster
-    const clusterPositions = {}; // cluster -> [{x, y}, ...]
-    clusterKeys.forEach((k, clusterIdx) => {
-      clusterNodeMap[k].forEach((id, i) => { nodeClusterIndex[id] = i; });
-      const size   = clusterNodeMap[k].length;
-      const center = centers[k] || { x: W / 2, y: H / 2 };
-      // Radius scales with node count but stays safe so cluster rings don't collide
-      const baseR  = Math.min(62, Math.max(24, 14 + size * 6.5));
-      clusterPositions[k] = computeClusterShape(size, center.x, center.y, baseR, clusterIdx);
-    });
-
-    // ── 5. Build node elements ───────────────────────────────────────────────
+    // ── Build elements ────────────────────────────────────────────────────────
     const elements = [];
 
-    rawNodes.forEach(node => {
-      const id      = String(node.id);
-      const cluster = clusterKey(node);
-      const idx     = nodeClusterIndex[id] ?? 0;
-      const pos     = clusterPositions[cluster]?.[idx] ?? centers[cluster] ?? { x: W / 2, y: H / 2 };
+    // Cluster label phantoms
+    clusterKeys.forEach(k => {
+      const c = centers[k];
+      if (!c) return;
+      // In cluster view put label above center; in hierarchy put it above the row
+      const labelY = layout === 'dagre' ? c.y - 80 : c.y - safeClusterRadius(clusterNodeMap[k].length) - 28;
+      elements.push({
+        group: 'nodes',
+        data: {
+          id: `__label__${k}`,
+          label: k,
+          isLabel: true,
+          color: clusterColorMap[k],
+          size: 1,
+          bgImage: 'none',
+        },
+        position: { x: c.x, y: labelY },
+      });
+    });
 
-      // Node size: quality-scaled 16–46px so nodes stay readable but compact
-      const quality  = node.quality_score || node.quality || 5;
-      const degBonus = (degreeMap[id] / maxDeg) * 8;   // 0-8 bonus
-      const nodeSize = Math.min(46, Math.max(16, 16 + quality * 1.9 + degBonus * 0.5));
+    // Actual content nodes
+    rawNodes.forEach(n => {
+      const id      = String(n.id);
+      const cluster = clusterKey(n);
+      const pos     = positions[id] || { x: 0, y: 0 };
+      const quality  = n.quality_score || n.quality || 5;
+      const degBonus = (degreeMap[id] / maxDeg) * 5;
+      const nodeSize = Math.round(Math.min(34, Math.max(16, 16 + quality * 1.4 + degBonus)));
 
       elements.push({
         group: 'nodes',
         data: {
           id,
-          label:   node.title || node.name || id,
-          color:   clusterColorMap[cluster],
+          label:   n.title || n.name || id,
+          color:   clusterColorMap[cluster] || '#6366f1',
           bgImage: svgCache[cluster],
           cluster,
           size: nodeSize,
-          rawData: node,
+          rawData: n,
         },
         position: pos,
       });
     });
 
-    // ── 6. Build edge elements ───────────────────────────────────────────────
+    // Edges — skip any that connect to label phantoms
+    const nodeIdSet = new Set(rawNodes.map(n => String(n.id)));
     const nodeClusterMap = {};
-    elements.forEach(el => {
-      if (el.group === 'nodes') nodeClusterMap[el.data.id] = el.data.cluster;
-    });
+    rawNodes.forEach(n => { nodeClusterMap[String(n.id)] = clusterKey(n); });
 
     rawEdges.forEach((edge, i) => {
       const src = String(edge.source || edge.from);
       const tgt = String(edge.target || edge.to);
       if (!src || !tgt || src === tgt) return;
+      if (!nodeIdSet.has(src) || !nodeIdSet.has(tgt)) return;
       const sameCluster = nodeClusterMap[src] === nodeClusterMap[tgt];
       const srcCluster  = nodeClusterMap[src] || 'default';
 
@@ -465,10 +561,10 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
           id: `e${i}-${src}-${tgt}`,
           source: src,
           target: tgt,
-          weight:    sameCluster ? 1.4 : 0.6,
-          color:     sameCluster
+          weight:  sameCluster ? 1.4 : 0.5,
+          color:   sameCluster
             ? clusterColorMap[srcCluster]
-            : 'rgba(148,163,184,0.3)',
+            : 'rgba(148,163,184,0.25)',
           sameCluster,
         },
       });
@@ -477,11 +573,24 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     setNodeCount(rawNodes.length);
     setEdgeCount(rawEdges.length);
 
-    // ── 8. Destroy old instance ───────────────────────────────────────────────
+    // ── Init Cytoscape ────────────────────────────────────────────────────────
     clearAllTimeouts();
     if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
-
     setIsLayoutRunning(true);
+
+    // Fit all content nodes, then enforce a comfortable minimum zoom
+    // so clusters don't appear as tiny dots on first load
+    const smartFit = (cy) => {
+      try {
+        const content = cy.nodes().not('[?isLabel]');
+        if (content.length === 0) return;
+        cy.fit(content, 60);
+        if (cy.zoom() < 0.55) {
+          cy.zoom(0.55);
+          cy.center(content);
+        }
+      } catch (_) {}
+    };
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -490,42 +599,36 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       layout: { name: 'preset' },
       userZoomingEnabled: true,
       userPanningEnabled: true,
-      minZoom: 0.08,
-      maxZoom: 4,
-      wheelSensitivity: 0.28,
+      minZoom: 0.15,
+      maxZoom: 3.5,
+      wheelSensitivity: 0.06,
     });
 
     cyRef.current = cy;
 
-    // ── 9. layoutstop ────────────────────────────────────────────────────────
     cy.one('layoutstop', () => {
       clearAllTimeouts();
       setIsLayoutRunning(false);
-      try { cy.fit(undefined, 70); } catch (_) {}
+      smartFit(cy);
     });
 
-    // Safety fallback
     track(setTimeout(() => {
       setIsLayoutRunning(false);
-      try { cy.fit(undefined, 70); } catch (_) {}
-    }, 10000));
+      smartFit(cy);
+    }, 8000));
 
-    // ── 10. Preset layout — nodes stay at their ring positions, no physics ──────
-    if (rawNodes.length > 1) {
-      cy.layout({ name: 'preset', fit: true, padding: 70 }).run();
-    } else {
-      cy.fit(undefined, 70);
-      setIsLayoutRunning(false);
-      clearAllTimeouts();
-    }
+    cy.layout({ name: 'preset', fit: false, padding: 60 }).run();
+    smartFit(cy);
 
-    // ── 11. Interactions ─────────────────────────────────────────────────────
+    // ── Interactions ──────────────────────────────────────────────────────────
     cy.on('mouseover', 'node', e => {
-      const node         = e.target;
-      const connEdges    = node.connectedEdges();
-      const neighbors    = connEdges.connectedNodes();
+      const node = e.target;
+      if (node.data('isLabel')) return;
+      const connEdges = node.connectedEdges();
+      const neighbors = connEdges.connectedNodes();
       cy.elements()
         .not(node).not(connEdges).not(neighbors)
+        .filter(el => !el.data('isLabel'))
         .addClass('dimmed');
       connEdges.addClass('highlighted');
       node.addClass('highlighted');
@@ -536,6 +639,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
     });
 
     cy.on('tap', 'node', e => {
+      if (e.target.data('isLabel')) return;
       if (onNodeSelect) onNodeSelect(e.target.data('rawData'));
     });
 
@@ -551,7 +655,7 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       if (cyRef.current) { cyRef.current.destroy(); cyRef.current = null; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [data, layout]);
 
   // Highlight externally selected node
   useEffect(() => {
@@ -564,11 +668,14 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
         edges.addClass('highlighted');
         cyRef.current.elements()
           .not(node).not(edges).not(edges.connectedNodes())
+          .filter(el => !el.data('isLabel'))
           .addClass('dimmed');
-        cyRef.current.animate({ center: { eles: node }, zoom: 1.6 }, { duration: 320 });
+        cyRef.current.animate({ center: { eles: node }, zoom: 1.8 }, { duration: 340 });
       }
     }
   }, [selectedNode]);
+
+  const layoutLabel = layout === 'dagre' ? 'Topic Map' : 'Cluster View';
 
   return (
     <Wrapper>
@@ -576,10 +683,15 @@ const KnowledgeGraphViewer = ({ data, selectedNode, onNodeSelect, onBackgroundCl
       {nodeCount > 0 && (
         <CountBadge>{nodeCount} nodes · {edgeCount} edges</CountBadge>
       )}
+      {nodeCount > 0 && (
+        <LayoutBadge>{layoutLabel}</LayoutBadge>
+      )}
       {isLayoutRunning && (
         <LoadingPill>
           <Spinner />
-          <LoadingText>Arranging neural clusters…</LoadingText>
+          <LoadingText>
+            {layout === 'dagre' ? 'Building topic map…' : 'Arranging clusters…'}
+          </LoadingText>
         </LoadingPill>
       )}
     </Wrapper>

@@ -26,12 +26,10 @@ MAX_CONTEXT_ITEMS = 10
 MIN_SIMILARITY_THRESHOLD = 0.1
 MAX_CONVERSATION_HISTORY = 20
 VALID_OPENAI_MODELS = [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-4.1-mini-2025-04-14",
-    "gpt-4.1-nano-2025-04-14",
-    "gpt-4-turbo",
-    "gpt-3.5-turbo",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "gpt-5.1-mini",
+    "gpt-5.1-nano",
 ]
 
 # -----------------------------
@@ -169,10 +167,10 @@ class RAGChatbot:
         self.openai_api_key = openai_key
         
         # Get model from environment with validation
-        model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        model_name = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
         if model_name not in VALID_OPENAI_MODELS:
-            logger.warning(f"Model '{model_name}' not in validated list, using gpt-4o-mini")
-            model_name = "gpt-4o-mini"
+            logger.warning(f"Model '{model_name}' not in validated list, using gpt-5.4-mini")
+            model_name = "gpt-5.4-mini"
         
         try:
             self.llm = ChatOpenAI(

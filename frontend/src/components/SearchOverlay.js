@@ -329,8 +329,8 @@ const TYPE_COLORS = {
 const typeStyle = t => TYPE_COLORS[t] || { bg: 'rgba(99,102,241,0.15)', color: '#a5b4fc' };
 
 /* ════════════════════════════════════════════════════════════════ */
-const SearchOverlay = ({ onClose, onSearch, graphData }) => {
-  const [query, setQuery]         = useState('');
+const SearchOverlay = ({ onClose, onSearch, graphData, initialQuery = '' }) => {
+  const [query, setQuery]         = useState(initialQuery);
   const [results, setResults]     = useState([]);
   const [loading, setLoading]     = useState(false);
   const [searchType, setSearchType] = useState('semantic');
