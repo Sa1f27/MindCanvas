@@ -2,12 +2,22 @@
 
 // UI Elements
 let exportButton, dashboardButton, statusText, progressContainer, progressBar,
-    progressLabel, alertContainer, statsText, statusDot, statusLabel;
+    progressLabel, alertContainer, statsText, statusDot, statusLabel,
+    serverUrlInput, saveUrlBtn;
 
 // State management
 let isExporting = false;
+const DEFAULT_SERVER_URL = 'http://localhost:8090';
 
-document.addEventListener('DOMContentLoaded', () => {
+function getStoredServerUrl() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(['serverUrl'], result => {
+            resolve((result.serverUrl || DEFAULT_SERVER_URL).replace(/\/$/, ''));
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
     exportButton      = document.getElementById('exportHistory');
     dashboardButton   = document.getElementById('openDashboard');
     statusText        = document.getElementById('statusText');
@@ -18,6 +28,20 @@ document.addEventListener('DOMContentLoaded', () => {
     statsText         = document.getElementById('statsText');
     statusDot         = document.getElementById('statusDot');
     statusLabel       = document.getElementById('statusLabel');
+    serverUrlInput    = document.getElementById('serverUrlInput');
+    saveUrlBtn        = document.getElementById('saveUrlBtn');
+
+    const stored = await getStoredServerUrl();
+    serverUrlInput.value = stored;
+
+    saveUrlBtn.addEventListener('click', async () => {
+        const url = serverUrlInput.value.trim().replace(/\/$/, '');
+        if (!url) return;
+        await chrome.storage.local.set({ serverUrl: url });
+        saveUrlBtn.textContent = 'Saved ✓';
+        setTimeout(() => { saveUrlBtn.textContent = 'Save'; }, 1500);
+        checkBackendStatus();
+    });
 
     exportButton.addEventListener('click', handleExportClick);
     dashboardButton.addEventListener('click', handleDashboardClick);
@@ -71,8 +95,12 @@ async function handleExportClick() {
 /**
  * Handle dashboard button click
  */
-function handleDashboardClick() {
-    chrome.tabs.create({ url: 'http://localhost:3030' });
+async function handleDashboardClick() {
+    const serverUrl = await getStoredServerUrl();
+    const dashboardUrl = serverUrl.includes('localhost:8090')
+        ? 'http://localhost:3030'
+        : serverUrl;
+    chrome.tabs.create({ url: dashboardUrl });
 }
 
 /**
@@ -118,24 +146,30 @@ function sendMessageToBackground(message) {
  */
 async function checkBackendStatus() {
     try {
-        const response = await fetch('http://localhost:8090/api/health', {
+        const serverUrl = await getStoredServerUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(`${serverUrl}/api/health`, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             statusDot.classList.add('online');
             statusLabel.textContent = 'Connected';
             statusText.textContent = 'Ready to export your browsing history.';
             updateStats('Backend ready for processing');
+            exportButton.disabled = false;
         } else {
             throw new Error('Backend not responding');
         }
     } catch (error) {
         statusDot.classList.remove('online');
         statusLabel.textContent = 'Offline';
-        statusText.textContent = 'Backend not running. Start the server first.';
-        showAlert('Cannot connect to backend on port 8090.', 'error');
+        statusText.textContent = 'Enter the server URL above and click Save.';
+        showAlert('Cannot connect. Check the Server URL above.', 'error');
         updateStats('Backend offline');
         exportButton.disabled = true;
     }
