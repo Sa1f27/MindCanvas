@@ -1,7 +1,11 @@
 // src/components/ControlPanel.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search, LayoutGrid, RefreshCw, Download,
+  Database, Maximize2, Minimize2, Trash2, Check,
+} from 'lucide-react';
 import { useKnowledgeStore } from '../store/knowledgeStore';
 
 /* ── Toolbar wrapper ────────────────────────────────────────────── */
@@ -136,10 +140,9 @@ const MenuItem = styled.div`
   &:hover  { background: rgba(99,102,241,0.12); border-left-color: rgba(99,102,241,0.4); }
   &.active { background: rgba(99,102,241,0.16); border-left-color: #6366f1; }
 
-  .item-icon  { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
   .item-label { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; }
   .item-desc  { font-size: 0.75rem; color: rgba(226,232,240,0.42); margin-top: 2px; line-height: 1.3; }
-  .check      { margin-left: auto; font-size: 0.8rem; color: #6366f1; }
+  .check      { margin-left: auto; color: #6366f1; }
 `;
 
 /* ── Tooltip ────────────────────────────────────────────────────── */
@@ -181,8 +184,10 @@ const KbdTag = styled.span`
 `;
 
 const SpinIcon = styled.span`
-  display: inline-block;
-  animation: spin 0.8s linear infinite;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: ${props => props.$spinning ? 'spin 0.8s linear infinite' : 'none'};
   @keyframes spin { to { transform: rotate(360deg); } }
 `;
 
@@ -193,13 +198,20 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
   const [confirmClear,  setConfirmClear]  = useState(false);
   const [isClearing,    setIsClearing]    = useState(false);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
+  const [isFullscreen,  setIsFullscreen]  = useState(false);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const { updateGraphSettings, refreshAllData, exportKnowledgeGraph, clearAllData, loadSampleData } =
     useKnowledgeStore();
 
   const layouts = [
-    { id: 'fcose', icon: '⬡', label: 'Force-Directed', desc: 'Physics-based — clusters emerge naturally'  },
-    { id: 'dagre', icon: '⧉', label: 'Hierarchical',    desc: 'Top-down hierarchy — shows knowledge flow' },
+    { id: 'fcose', label: 'Force-Directed', desc: 'Physics-based — clusters emerge naturally'  },
+    { id: 'dagre', label: 'Hierarchical',   desc: 'Top-down hierarchy — shows knowledge flow' },
   ];
 
   const handleLayout = (id) => {
@@ -265,7 +277,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         onMouseEnter={() => setHovered('search')}
         onMouseLeave={() => setHovered(null)}
       >
-        ⌕
+        <Search size={15} />
         <AnimatePresence>{tip('search', 'Search Knowledge', '⌘K')}</AnimatePresence>
       </Btn>
 
@@ -280,7 +292,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
           onMouseEnter={() => setHovered('layout')}
           onMouseLeave={() => setHovered(null)}
         >
-          ⊞
+          <LayoutGrid size={15} />
           <AnimatePresence>{!showLayout && tip('layout', 'Change Layout')}</AnimatePresence>
         </Btn>
 
@@ -299,12 +311,11 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
                   className={currentLayout === l.id ? 'active' : ''}
                   onClick={() => handleLayout(l.id)}
                 >
-                  <span className="item-icon">{l.icon}</span>
                   <div>
                     <div className="item-label">{l.label}</div>
                     <div className="item-desc">{l.desc}</div>
                   </div>
-                  {currentLayout === l.id && <span className="check">✓</span>}
+                  {currentLayout === l.id && <Check size={14} className="check" />}
                 </MenuItem>
               ))}
             </DropdownMenu>
@@ -320,7 +331,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         onMouseEnter={() => setHovered('refresh')}
         onMouseLeave={() => setHovered(null)}
       >
-        {isRefreshing ? <SpinIcon>↻</SpinIcon> : '↻'}
+        <SpinIcon $spinning={isRefreshing}><RefreshCw size={15} /></SpinIcon>
         <AnimatePresence>{!isRefreshing && tip('refresh', 'Refresh Data', '⌘R')}</AnimatePresence>
       </Btn>
 
@@ -333,7 +344,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         onMouseEnter={() => setHovered('export')}
         onMouseLeave={() => setHovered(null)}
       >
-        ↓
+        <Download size={15} />
         <AnimatePresence>{tip('export', 'Export Graph')}</AnimatePresence>
       </Btn>
 
@@ -346,7 +357,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         onMouseLeave={() => setHovered(null)}
         style={{ color: isLoadingSample ? '#a5b4fc' : undefined }}
       >
-        {isLoadingSample ? <SpinIcon>↻</SpinIcon> : '⊕'}
+        <SpinIcon $spinning={isLoadingSample}><Database size={15} /></SpinIcon>
         <AnimatePresence>
           {!isLoadingSample && tip('sample', 'Load Sample Data')}
         </AnimatePresence>
@@ -362,8 +373,8 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
         onMouseEnter={() => setHovered('fs')}
         onMouseLeave={() => setHovered(null)}
       >
-        ⤢
-        <AnimatePresence>{tip('fs', 'Fullscreen', 'F11')}</AnimatePresence>
+        {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        <AnimatePresence>{tip('fs', isFullscreen ? 'Exit Fullscreen' : 'Fullscreen', 'F11')}</AnimatePresence>
       </Btn>
 
       <Divider />
@@ -403,7 +414,7 @@ const ControlPanel = ({ onSearch, onRefresh, onLayoutChange, currentLayout, isRe
             onMouseEnter={() => setHovered('clear')}
             onMouseLeave={() => setHovered(null)}
           >
-            {isClearing ? <SpinIcon>↻</SpinIcon> : '⊗'}
+            <SpinIcon $spinning={isClearing}><Trash2 size={15} /></SpinIcon>
             <AnimatePresence>{tip('clear', 'Clear All Nodes')}</AnimatePresence>
           </DangerBtn>
         )}

@@ -1,7 +1,8 @@
 // src/App.js - Fixed layout with proper chatbot integration
-import React, { useState, useEffect, useCallback, Component } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Network, AlertTriangle, Puzzle } from 'lucide-react';
 import { useKnowledgeStore } from './store/knowledgeStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useGraphAnalytics } from './hooks/useGraphAnalytics';
@@ -77,7 +78,7 @@ const GlobalStyle = createGlobalStyle`
     padding: 0;
     box-sizing: border-box;
   }
-  
+
   html, body {
     height: 100%;
     width: 100%;
@@ -94,22 +95,72 @@ const GlobalStyle = createGlobalStyle`
     flex-direction: column;
   }
 
-  ::-webkit-scrollbar {
-    width: 5px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.2);
   }
+
+  @keyframes orbDrift1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(40px, -30px) scale(1.06); }
+    66%       { transform: translate(-25px, 40px) scale(0.96); }
+  }
+  @keyframes orbDrift2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(-50px, 25px) scale(1.08); }
+    66%       { transform: translate(30px, -35px) scale(0.94); }
+  }
+  @keyframes orbDrift3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%       { transform: translate(20px, 50px) scale(1.04); }
+  }
+`;
+
+/* ── Ambient background orbs ─────────────────────────────────────────────── */
+const AmbientBg = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+`;
+
+const Orb = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(1px);
+`;
+
+const Orb1 = styled(Orb)`
+  width: 680px;
+  height: 680px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 68%);
+  top: -18%;
+  left: 18%;
+  animation: orbDrift1 22s ease-in-out infinite;
+`;
+
+const Orb2 = styled(Orb)`
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 68%);
+  bottom: -12%;
+  right: 12%;
+  animation: orbDrift2 28s ease-in-out infinite;
+`;
+
+const Orb3 = styled(Orb)`
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.045) 0%, transparent 68%);
+  top: 38%;
+  left: -6%;
+  animation: orbDrift3 18s ease-in-out infinite;
 `;
 
 const AppContainer = styled.div`
@@ -210,28 +261,34 @@ const LoadingOverlay = styled(motion.div)`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(7, 7, 18, 0.6);
+  backdrop-filter: blur(8px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  color: white;
-  
+  gap: 18px;
+
   .loader {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid white;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: ${props => props.theme.spacing.lg};
+    background: conic-gradient(from 0deg, transparent 0%, transparent 60%, #6366f1 100%);
+    animation: ringSpин 0.85s linear infinite;
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), white 0);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), white 0);
   }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+
+  .label {
+    font-size: 0.8rem;
+    color: rgba(226, 232, 240, 0.45);
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  @keyframes ringSpин {
+    to { transform: rotate(360deg); }
   }
 `;
 
@@ -244,22 +301,32 @@ const EmptyGraphState = styled.div`
   text-align: center;
   color: ${props => props.theme.colors.textSecondary};
   padding: ${props => props.theme.spacing.xl};
-  
-  .icon {
-    font-size: 4rem;
+
+  .icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: ${props => props.theme.spacing.lg};
-    opacity: 0.6;
+    color: rgba(99, 102, 241, 0.6);
   }
-  
+
   .title {
-    font-size: 1.5rem;
-    margin-bottom: ${props => props.theme.spacing.md};
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: ${props => props.theme.spacing.sm};
     color: ${props => props.theme.colors.text};
+    letter-spacing: -0.3px;
   }
-  
+
   .description {
-    max-width: 400px;
-    line-height: 1.6;
+    max-width: 360px;
+    line-height: 1.65;
+    font-size: 0.88rem;
     margin-bottom: ${props => props.theme.spacing.lg};
   }
 `;
@@ -290,13 +357,18 @@ const StatusBanner = styled(motion.div)`
   position: absolute;
   top: 18px;
   right: 18px;
-  background: ${props => props.$connected ?
-    'rgba(16, 185, 129, 0.12)' :
-    'rgba(239, 68, 68, 0.12)'};
-  color: ${props => props.$connected ? '#10b981' : '#ef4444'};
-  border: 1px solid ${props => props.$connected ?
-    'rgba(16, 185, 129, 0.25)' :
-    'rgba(239, 68, 68, 0.25)'};
+  background: ${props =>
+    props.$status === 'online'      ? 'rgba(16, 185, 129, 0.12)' :
+    props.$status === 'connecting'  ? 'rgba(245, 158, 11, 0.10)' :
+                                      'rgba(239, 68, 68, 0.12)'};
+  color: ${props =>
+    props.$status === 'online'      ? '#10b981' :
+    props.$status === 'connecting'  ? '#f59e0b' :
+                                      '#ef4444'};
+  border: 1px solid ${props =>
+    props.$status === 'online'      ? 'rgba(16, 185, 129, 0.25)' :
+    props.$status === 'connecting'  ? 'rgba(245, 158, 11, 0.22)' :
+                                      'rgba(239, 68, 68, 0.25)'};
   padding: 5px 12px;
   border-radius: 100px;
   font-size: 0.75rem;
@@ -313,12 +385,26 @@ const StatusBanner = styled(motion.div)`
     height: 6px;
     border-radius: 50%;
     background: currentColor;
-    animation: ${props => props.$connected ? 'pulse 2s infinite' : 'none'};
+    animation: ${props => props.$status === 'online' ? 'statusPulse 2s infinite' : 'none'};
   }
 
-  @keyframes pulse {
+  .status-ring {
+    width: 11px;
+    height: 11px;
+    border: 1.5px solid rgba(245, 158, 11, 0.25);
+    border-top-color: #f59e0b;
+    border-radius: 50%;
+    animation: statusSpin 0.9s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes statusPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+  }
+
+  @keyframes statusSpin {
+    to { transform: rotate(360deg); }
   }
 `;
 
@@ -326,41 +412,53 @@ const ErrorToast = styled(motion.div)`
   position: fixed;
   bottom: 20px;
   left: 20px;
-  background: rgba(239, 68, 68, 0.95);
-  color: white;
-  padding: 16px 20px;
+  background: rgba(15, 10, 10, 0.96);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 14px 18px;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(239,68,68,0.1);
+  backdrop-filter: blur(16px);
   z-index: 10000;
-  max-width: 400px;
-  
+  max-width: 380px;
+
   .error-title {
     font-weight: 600;
+    font-size: 0.85rem;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
+    color: #f87171;
   }
-  
+
   .error-message {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    line-height: 1.4;
+    font-size: 0.82rem;
+    color: rgba(252, 165, 165, 0.75);
+    line-height: 1.45;
+    padding-left: 23px;
   }
-  
+
   .error-dismiss {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    background: none;
+    top: 10px;
+    right: 10px;
+    background: rgba(239, 68, 68, 0.1);
     border: none;
-    color: white;
+    color: rgba(252, 165, 165, 0.6);
     cursor: pointer;
-    font-size: 18px;
-    opacity: 0.7;
-    
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: background 0.15s, color 0.15s;
+
     &:hover {
-      opacity: 1;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
     }
   }
 `;
@@ -369,8 +467,10 @@ const ErrorToast = styled(motion.div)`
 const App = () => {
   // UI State
   const [backendConnected, setBackendConnected] = useState(false);
+  const hasEverConnected = useRef(false);
   const [showPerformanceMonitor, setShowPerformanceMonitor] = useState(false);
   const [showSearchOverlay, setShowSearchOverlay] = useState(false);
+  const [searchInitialQuery, setSearchInitialQuery] = useState('');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [currentLayout, setCurrentLayout] = useState('fcose');
   const [selectedNodeDetails, setSelectedNodeDetails] = useState(null);
@@ -423,6 +523,7 @@ const App = () => {
       keys: 'escape',
       action: () => {
         setShowSearchOverlay(false);
+        setSearchInitialQuery('');
         setShowSettingsPanel(false);
         setSelectedNodeDetails(null);
         setSelectedNode(null);
@@ -438,6 +539,7 @@ const App = () => {
       try {
         // Check backend health first
         const isHealthy = await checkBackendHealth();
+        if (isHealthy) hasEverConnected.current = true;
         setBackendConnected(isHealthy);
 
         if (isHealthy) {
@@ -465,6 +567,7 @@ const App = () => {
     const healthCheckInterval = setInterval(async () => {
       try {
         const isHealthy = await checkBackendHealth();
+        if (isHealthy) hasEverConnected.current = true;
         setBackendConnected(isHealthy);
       } catch (error) {
         setBackendConnected(false);
@@ -562,6 +665,11 @@ const App = () => {
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyle />
+      <AmbientBg>
+        <Orb1 />
+        <Orb2 />
+        <Orb3 />
+      </AmbientBg>
       <AppContainer>
         {/* Left Panel - Unified Sidebar */}
         <SidePanel
@@ -584,15 +692,25 @@ const App = () => {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           {/* Status indicator — top-right of graph, away from chat panel */}
-          <StatusBanner
-            $connected={backendConnected}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.3 }}
-          >
-            <div className="status-dot" />
-            {backendConnected ? 'Connected' : 'Offline'}
-          </StatusBanner>
+          {(() => {
+            const status = backendConnected ? 'online'
+              : hasEverConnected.current ? 'offline'
+              : 'connecting';
+            return (
+              <StatusBanner
+                $status={status}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                {status === 'connecting' ? (
+                  <><div className="status-ring" />Connecting…</>
+                ) : (
+                  <><div className="status-dot" />{status === 'online' ? 'Connected' : 'Offline'}</>
+                )}
+              </StatusBanner>
+            );
+          })()}
 
           {/* Controls */}
           <ControlsPanel>
@@ -616,14 +734,16 @@ const App = () => {
             />
           ) : (
             <EmptyGraphState>
-              <div className="icon">🕸️</div>
+              <div className="icon-wrap">
+                <Network size={32} />
+              </div>
               <div className="title">
                 {backendConnected ? 'Knowledge Graph Ready' : 'Backend Offline'}
               </div>
               <div className="description">
                 {backendConnected ? (
                   graphData.nodes?.length === 0 ? (
-                    "Your knowledge graph is ready! Use the Chrome extension to export your browsing history and start building your personal knowledge network."
+                    "Your knowledge graph is ready. Use the Chrome extension to export your browsing history and start building your personal knowledge network."
                   ) : (
                     `Displaying ${graphData.nodes?.length} knowledge nodes with ${graphData.links?.length} connections.`
                   )
@@ -634,11 +754,12 @@ const App = () => {
 
               {backendConnected && (!graphData.nodes || graphData.nodes.length === 0) && (
                 <Button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={handleExportHistory}
                 >
-                  📱 Use Chrome Extension
+                  <Puzzle size={15} style={{ marginRight: 7 }} />
+                  Use Chrome Extension
                 </Button>
               )}
             </EmptyGraphState>
@@ -661,7 +782,7 @@ const App = () => {
                 exit={{ opacity: 0 }}
               >
                 <div className="loader" />
-                <div>Loading your knowledge graph...</div>
+                <div className="label">Loading knowledge graph…</div>
               </LoadingOverlay>
             )}
           </AnimatePresence>
@@ -687,9 +808,10 @@ const App = () => {
         <AnimatePresence>
           {showSearchOverlay && (
             <SearchOverlay
-              onClose={() => setShowSearchOverlay(false)}
+              onClose={() => { setShowSearchOverlay(false); setSearchInitialQuery(''); }}
               onSearch={handleSearch}
               graphData={graphData}
+              initialQuery={searchInitialQuery}
             />
           )}
         </AnimatePresence>
@@ -711,6 +833,18 @@ const App = () => {
                 onClose={() => {
                   setSelectedNodeDetails(null);
                   setSelectedNode(null);
+                }}
+                onFocusNode={() => {
+                  // Close modal but keep selectedNode so the graph stays highlighted+zoomed
+                  setSelectedNodeDetails(null);
+                }}
+                onSearch={(query) => {
+                  setSearchInitialQuery(query || '');
+                  setShowSearchOverlay(true);
+                }}
+                onSelectRelatedNode={(n) => {
+                  setSelectedNodeDetails(n);
+                  setSelectedNode(n);
                 }}
                 graphData={graphData}
               />
@@ -734,7 +868,8 @@ const App = () => {
                 ×
               </button>
               <div className="error-title">
-                ⚠️ Error
+                <AlertTriangle size={14} />
+                Error
               </div>
               <div className="error-message">{error}</div>
             </ErrorToast>

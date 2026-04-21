@@ -46,7 +46,7 @@ We consume vast amounts of content daily — articles, tutorials, research paper
 
 **Core capabilities:**
 
-- Automatically groups related content into meaningful clusters using GPT-4.1-mini
+- Automatically groups related content into meaningful clusters using GPT-5.4-mini
 - Visualises relationships between topics as an interactive neural-style graph
 - Lets you query your own knowledge base in natural language via RAG
 
@@ -69,7 +69,7 @@ _Semantic cluster view with neural-style node layout_
 
 ### AI-Powered Semantic Clustering
 
-- **GPT-4.1-mini JSON Mode** — structured LLM output assigns nodes to semantic clusters (Python pages group with Python, finance with finance, etc.)
+- **GPT-5.4-mini JSON Mode** — structured LLM output assigns nodes to semantic clusters (Python pages group with Python, finance with finance, etc.)
 - **Smart Fallback** — topic-specificity algorithm activates when the API is unavailable, ensuring clustering always works
 
 ### Interactive Knowledge Graph
@@ -99,7 +99,7 @@ _Semantic cluster view with neural-style node layout_
 | ------------------------------------------ | ------------------------------------------ |
 | **FastAPI**                                | Async Python web framework                 |
 | **SentenceTransformer** `all-MiniLM-L6-v2` | 384-dim local embeddings                   |
-| **OpenAI GPT-4.1-mini**                    | Semantic clustering & content analysis     |
+| **OpenAI GPT-5.4-mini**                    | Semantic clustering & content analysis     |
 | **asyncpg** + **pgvector**                 | High-performance PostgreSQL vector queries |
 | **scikit-learn** (DBSCAN)                  | Embedding-based clustering fallback        |
 | **BeautifulSoup**                          | Web content extraction                     |
@@ -136,7 +136,7 @@ _Semantic cluster view with neural-style node layout_
 │                                         │
 │  • BeautifulSoup  — content extraction  │
 │  • SentenceTransformer — embeddings     │
-│  • GPT-4.1-mini   — AI clustering       │
+│  • GPT-5.4-mini   — AI clustering       │
 │  • RAG pipeline   — chatbot context     │
 └────────┬────────────────────────────────┘
          │ asyncpg + pgvector
@@ -220,7 +220,7 @@ curl -X POST http://localhost:8090/api/ingest \
 | ---------------- | -------- | -------------------------------------------------------------- |
 | `OPENAI_API_KEY` | **Yes**  | OpenAI API key for clustering and chat                         |
 | `DATABASE_URL`   | No       | PostgreSQL connection string (default: local Docker container) |
-| `OPENAI_MODEL`   | No       | Override default model (default: `gpt-4o-mini`)                |
+| `OPENAI_MODEL`   | No       | Override default model (default: `gpt-5.4-mini`)               |
 
 Default `backend/.env`:
 

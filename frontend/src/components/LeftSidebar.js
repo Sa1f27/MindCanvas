@@ -2,6 +2,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
+import { Brain } from 'lucide-react';
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -324,7 +325,7 @@ const LeftSidebar = ({ stats, trending, recommendations }) => {
       {/* Brand */}
       <Brand>
         <BrandLogo>
-          <BrandIcon>✦</BrandIcon>
+          <BrandIcon><Brain size={15} /></BrandIcon>
           <BrandName>MindCanvas</BrandName>
         </BrandLogo>
         <BrandSub>AI Knowledge Graph</BrandSub>
