@@ -1,7 +1,7 @@
 // Enhanced background script with better error handling and progress tracking
 
 const CONFIG = {
-    BACKEND_URL: 'http://localhost:8090',
+    DEFAULT_SERVER_URL: 'http://localhost:8090',
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
     REQUEST_TIMEOUT: 30000,
@@ -93,17 +93,26 @@ function formatHistoryItem(item) {
     };
 }
 
+async function getServerUrl() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(['serverUrl'], result => {
+            resolve((result.serverUrl || CONFIG.DEFAULT_SERVER_URL).replace(/\/$/, ''));
+        });
+    });
+}
+
 /**
  * Send history data to backend with retry logic
  */
 async function sendToBackend(historyItems, retryCount = 0) {
     try {
         console.log(`Sending ${historyItems.length} URLs to backend (attempt ${retryCount + 1})`);
-        
+
+        const serverUrl = await getServerUrl();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
-        
-        const response = await fetch(`${CONFIG.BACKEND_URL}/api/ingest`, {
+
+        const response = await fetch(`${serverUrl}/api/ingest`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
