@@ -4,9 +4,9 @@ import { create } from 'zustand';
 const API_BASE = '/api';
 
 // Enhanced API helper with better error handling and retry logic
-const apiCall = async (endpoint, options = {}) => {
+const apiCall = async (endpoint, options = {}, timeoutMs = 30000) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -495,7 +495,7 @@ export const useKnowledgeStore = create((set, get) => ({
   loadSampleData: async () => {
     try {
       set({ isLoading: true, error: null });
-      const result = await apiCall('/load-sample-data', { method: 'POST' });
+      const result = await apiCall('/load-sample-data', { method: 'POST' }, 300000);
       return result;
     } catch (error) {
       console.error('Load sample data failed:', error);
