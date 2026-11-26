@@ -5,11 +5,13 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Secrets/env
+# Secrets stay local, at any depth; the .example files document the variables
 .env
-backend/.env
+.env.*
 !.env.example
-!backend/.env.example
+!.env.*.example
+*.pem
+*.key
 
 # Node/build outputs
 node_modules/

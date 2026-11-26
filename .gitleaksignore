@@ -1,0 +1,7 @@
+# Assessed findings in old commits. Format: commit:file:rule:line (no secret values).
+# The anon key of the Supabase cloud project used before MindCanvas moved to self-hosted Postgres. That project is
+# deleted, so the key no longer grants access to anything.
+294e7d9aba4e656e70ec903c0d34f0e87b7bd89a:backend/setup.py:jwt:11
+294e7d9aba4e656e70ec903c0d34f0e87b7bd89a:backend/supabase_db.py:jwt:23
+466471a9ae8eebc65c972c52a85b36f5af1cf7ff:backend/supabase_db.py:jwt:23
+a07b016ccad26a397fc11df811edadb1c17e5b39:backend/supabase_db.py:jwt:23
