@@ -11,10 +11,15 @@ The first version is published as a first-author paper: [An AI System for Transf
 - **Maps your reading.** A Chrome extension sends the pages you visited. The backend reads each page, summarises it, embeds it and groups it with related pages.
 - **Shows it in 3D.** Each cluster glows in its own colour, like neurons in a [Brainbow](https://en.wikipedia.org/wiki/Brainbow) image, with links between closely related pages. A 2D view is one click away for reading titles.
 - **Answers questions from your pages.** Retrieval-augmented chat answers with numbered citations. The camera turns to the cited pages and lights them up, so you can see where every answer came from.
-- **Finds by meaning.** Search matches titles instantly and pages with the same meaning through vector search, so "container deployment" finds the Docker and Kubernetes pages.
+- **Finds by meaning.** Search matches titles instantly and pages with the same meaning through vector search, so "learning from data with neural networks" finds the PyTorch and TensorFlow pages. Every match lights up on the map as you type.
+- **Analyses the graph.** Stats show what share of your reading each area takes, the hub pages with the most links, the bridge pages that join separate areas (betweenness centrality, Brandes' algorithm) and which areas connect most.
 - **Works without an LLM.** With no API key, clusters, names and links come from the embeddings alone (see [How it works](#how-it-works)).
 
 ![Asking a question: the answer cites five pages and the map lights them up](docs/images/ask.png)
+
+| Search by meaning | Graph analysis |
+| --- | --- |
+| ![Search: pages similar in meaning light up on the map](docs/images/search.png) | ![Stats: reading by area, hub pages and bridge pages lit on the map](docs/images/stats.png) |
 
 ## How it works
 
@@ -121,7 +126,7 @@ frontend/src/
   components/ask/     chat panel and citations
   components/rail/    clusters, search, topics, stats
   store/              graph, chat and UI state (Zustand)
-  lib/                typed API client, palette, helpers
+  lib/                typed API client, graph analysis (with tests), palette
 extension/            Chrome extension (Manifest V3)
 sample/               65 sample pages to try it with
 ```
@@ -133,15 +138,17 @@ sample/               65 sample pages to try it with
 cd backend && pip install -r requirements.txt && uvicorn main:app --reload --port 8090
 
 # Frontend
-cd frontend && npm install && npm run dev   # npm run typecheck, npm run lint, npm run build
+cd frontend && npm install && npm run dev   # also: npm test, npm run typecheck, npm run lint, npm run build
 ```
 
 ## Citation
 
 ```bibtex
 @article{huzaifah2026mindcanvas,
-  title   = {An AI System for Transforming Scattered Web Data into an Interactive, Queryable Knowledge Graph},
-  author  = {Huzaifah, Mohammed and Mujeeb, Syed Abdul Muqeet and Mohammed, Niyazuddin and Ali, Mir Danish},
+  title   = {An AI System for Transforming Scattered Web Data
+             into an Interactive, Queryable Knowledge Graph},
+  author  = {Huzaifah, Mohammed and Mujeeb, Syed Abdul Muqeet
+             and Mohammed, Niyazuddin and Ali, Mir Danish},
   journal = {International Journal of Engineering \& Science Research},
   volume  = {16},
   number  = {2},

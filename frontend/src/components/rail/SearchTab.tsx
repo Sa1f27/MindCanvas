@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useGraph } from '../../store/graph';
@@ -42,6 +42,27 @@ export default function SearchTab() {
   const state = !current ? 'loading' : result.failed ? 'error' : 'idle';
   const titleIds = new Set(titleMatches.map(n => n.id));
   const meaning = current ? result.hits.filter(h => !titleIds.has(String(h.id))) : [];
+
+  // Every match glows on the map as you type. The camera stays put, so typing never makes it lurch.
+  const matchKey = [...titleIds, ...meaning.map(h => String(h.id))].join(',');
+  const lit = useRef('');
+  useEffect(() => {
+    const { highlight, highlightIds } = useGraph.getState();
+    const mine = lit.current && [...highlightIds].join(',') === lit.current;
+    if (matchKey) {
+      highlight(matchKey.split(','), false);
+      lit.current = [...useGraph.getState().highlightIds].join(',');
+    } else if (mine) {
+      highlight([], false);
+      lit.current = '';
+    }
+  }, [matchKey]);
+
+  // Leaving the tab clears the glow, unless something else (a chat answer) has lit the map since.
+  useEffect(() => () => {
+    const { highlight, highlightIds } = useGraph.getState();
+    if (lit.current && [...highlightIds].join(',') === lit.current) highlight([], false);
+  }, []);
 
   return (
     <div className="px-2 py-3">

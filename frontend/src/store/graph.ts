@@ -31,7 +31,8 @@ interface GraphState {
   showOnlyCluster: (name: string | null) => void;
   select: (id: string | null, focus?: boolean) => void;
   hover: (id: string | null) => void;
-  highlight: (ids: string[]) => void;
+  /** Light these nodes. `focus` also flies the camera to them; search lights without moving. */
+  highlight: (ids: string[], focus?: boolean) => void;
 }
 
 function indexClusters(nodes: GraphNode[]) {
@@ -102,5 +103,6 @@ export const useGraph = create<GraphState>((set, get) => ({
     if (get().hoveredId !== id) set({ hoveredId: id });
   },
 
-  highlight: ids => set(s => ({ highlightIds: new Set(ids), focusTick: ids.length ? s.focusTick + 1 : s.focusTick })),
+  highlight: (ids, focus = true) =>
+    set(s => ({ highlightIds: new Set(ids), focusTick: focus && ids.length ? s.focusTick + 1 : s.focusTick })),
 }));

@@ -53,10 +53,12 @@ export default function Graph3D({ width, height, graph }: Props) {
     const visible = new Set(graph.nodes.map(n => n.cluster));
     for (const c of clusters) {
       if (!visible.has(c.name)) continue;
-      const sprite = new SpriteText(c.name, 11, c.color);
+      // Constant size on screen (no perspective), like labels on a map: near ones never balloon, far ones stay legible.
+      const sprite = new SpriteText(c.name, 0.0125, c.color);
       sprite.fontFace = 'IBM Plex Sans';
       sprite.fontWeight = '500';
       sprite.material.depthWrite = false;
+      sprite.material.sizeAttenuation = false;
       sprite.material.opacity = 0.9;
       scene.add(sprite);
       labels.current.set(c.name, sprite);
@@ -113,10 +115,20 @@ export default function Graph3D({ width, height, graph }: Props) {
       api.zoomToFit(ms, 60);
       return;
     }
-    const c = targets.reduce((acc, n) => ({ x: acc.x + n.x! / targets.length, y: acc.y + n.y! / targets.length, z: acc.z + (n.z ?? 0) / targets.length }), { x: 0, y: 0, z: 0 });
-    const spread = Math.max(...targets.map(n => Math.hypot(n.x! - c.x, n.y! - c.y, (n.z ?? 0) - c.z)));
-    const distance = Math.max(110, spread * 2.6);
-    // Keep the current viewing direction, just move closer, so the flight feels continuous.
+    const centre = (ns: SimNode[]) => {
+      const sum = ns.reduce((a, n) => ({ x: a.x + n.x!, y: a.y + n.y!, z: a.z + (n.z ?? 0) }), { x: 0, y: 0, z: 0 });
+      return { x: sum.x / ns.length, y: sum.y / ns.length, z: sum.z / ns.length };
+    };
+    const radius = (ns: SimNode[], c: { x: number; y: number; z: number }) =>
+      Math.max(0, ...ns.map(n => Math.hypot(n.x! - c.x, n.y! - c.y, (n.z ?? 0) - c.z)));
+
+    const c = centre(targets);
+    // One page gets a close look. Several stay at close to overview distance and the camera turns toward them:
+    // flying into the middle of a 3D cloud would put dimmed pages between the camera and what is lit.
+    const placed = graph.nodes.filter(n => n.x !== undefined);
+    const mapRadius = radius(placed, centre(placed));
+    const distance = targets.length === 1 ? 120 : Math.max(radius(targets, c) * 3, mapRadius * 1.7);
+    // Keep the current viewing direction, so the flight feels continuous.
     const cam = api.camera().position;
     const dir = { x: cam.x - c.x, y: cam.y - c.y, z: cam.z - c.z };
     const len = Math.hypot(dir.x, dir.y, dir.z) || 1;

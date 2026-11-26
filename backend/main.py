@@ -79,8 +79,9 @@ db: SimpleVectorDB = None
 rag_chatbot: RAGChatbot = None
 
 # In-memory cache for the graph export (avoids re-running expensive AI call on every fetch)
+# The graph only changes when the data does: ingest and reset clear this cache. There is no timer, so the
+# map (cluster names and colours) stays stable between visits and no LLM call is repeated for nothing.
 _graph_cache: dict = {"result": None, "ts": 0.0, "node_count": 0}
-_GRAPH_CACHE_TTL = 600  # seconds (10 minutes)
 
 # Models
 class HistoryItem(BaseModel):
@@ -1158,7 +1159,6 @@ async def export_knowledge_graph(force: bool = False):
         if (
             not force
             and cached is not None
-            and (now - _graph_cache["ts"]) < _GRAPH_CACHE_TTL
             and _graph_cache["node_count"] == len(items)
         ):
             logger.info(f"📦 Returning cached graph ({len(items)} nodes, age={(now - _graph_cache['ts']):.0f}s)")
