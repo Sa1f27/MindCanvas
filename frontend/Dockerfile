@@ -1,5 +1,5 @@
 # Vite dev server
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source files
 COPY index.html ./
-COPY vite.config.js ./
+COPY vite.config.ts tsconfig.json ./
 COPY public ./public
 COPY src ./src
 

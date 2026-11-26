@@ -18,7 +18,6 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
@@ -28,11 +27,26 @@ from collections import Counter
 
 # Import the fixed RAG chatbot and Supabase DB
 from rag_chatbot import RAGChatbot, ChatRequest, ChatResponse, ChatMessage
-from supabase_db import SimpleVectorDB, ContentItem, init_db
+from database import SimpleVectorDB, ContentItem, init_db
+import semantic_graph
 
 # Configuration — load from .env file directly
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# One setting for every LLM call: clustering, graph structure and chat.
+# Any OpenAI-compatible API works: leave OPENAI_BASE_URL unset for OpenAI, or point it at another
+# provider (e.g. https://api.deepseek.com with OPENAI_MODEL=deepseek-chat).
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL") or None
+
+
+def llm_client() -> OpenAI:
+    return OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+
+
+def token_limit(n: int) -> dict:
+    """OpenAI's newer models take max_completion_tokens; most compatible providers still take max_tokens."""
+    return {"max_completion_tokens": n} if OPENAI_BASE_URL is None else {"max_tokens": n}
 
 # Simple settings
 BATCH_SIZE = 10
@@ -225,7 +239,7 @@ def extract_content(html: str, url: str, title: str) -> Dict[str, str]:
 # LLM Processing
 class LLMProcessor:
     def __init__(self):
-        self.openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.openai_client = llm_client() if OPENAI_API_KEY else None
     
     async def process_content(self, content_items: List[Dict]) -> List[Dict]:
         """Process content with LLM in batches to minimise API calls."""
@@ -276,10 +290,9 @@ The "items" array must have exactly {len(batch)} entries."""
                 try:
                     response = await asyncio.to_thread(
                         self.openai_client.chat.completions.create,
-                        model="gpt-5.4-mini",
+                        model=OPENAI_MODEL,
                         messages=[{"role": "user", "content": prompt}],
-                        max_completion_tokens=150 * len(batch),
-                        temperature=0.1,
+                        **token_limit(150 * len(batch)),
                         response_format={"type": "json_object"},
                     )
                     raw = response.choices[0].message.content.strip()
@@ -312,7 +325,7 @@ The "items" array must have exactly {len(batch)} entries."""
         results = []
         for i, item in enumerate(batch):
             if i < len(parsed):
-                results.append(self._parse_llm_response(item, json.dumps(parsed[i]), 'openai'))
+                results.append(self._parse_llm_response(item, json.dumps(parsed[i]), 'llm'))
             else:
                 logger.warning(f"Batch response missing item {i+1}, using basic fallback")
                 results.append(self._basic_process(item))
@@ -868,21 +881,21 @@ async def _ai_graph_structure(items: list) -> dict:
             "type": item.get('content_type', ''),
         })
 
-    prompt = f"""You are a knowledge graph architect specializing in fine-grained topic taxonomy.
-Given these content nodes, assign each to a precise semantic cluster and identify meaningful connections.
+    # About one cluster per six pages, between 3 and 12: enough to separate fields, few enough to read at a glance.
+    target = max(3, min(12, round(len(items) / 6)))
+    low, high = max(2, target - 2), min(12, target + 2)
 
-CRITICAL SEPARATION RULE — different technologies MUST be different clusters:
-  WRONG: {{"Python Basics": ["Python tutorial", "Docker tutorial", "Git intro", "FastAPI guide"]}}
-  RIGHT: {{"Python Core": ["Python tutorial"], "Containerization": ["Docker tutorial"], "Version Control": ["Git intro"], "Web APIs": ["FastAPI guide"]}}
+    prompt = f"""You are a knowledge graph architect. Group these content nodes into clusters a person
+would recognise as the areas of their reading, and identify meaningful connections between nodes.
 
 CLUSTERING RULES:
-- Create 5–18 clusters based on SPECIFIC technology/topic themes.
-- Cluster names must be specific (2–4 words): "Python Core", "Docker & DevOps", "Machine Learning", "Web Frontend", "Databases", "Cybersecurity".
-- Broad labels like "Programming" or "Development Tools" are FORBIDDEN — always be specific.
+- Create between {low} and {high} clusters, ideally about {target}.
+- Every cluster should hold at least 3 nodes. Merge small, closely related topics into one shared area,
+  for example NumPy, Pandas and Matplotlib -> "Data Science in Python", or SQL and MongoDB -> "Databases".
+- Keep clearly different fields apart: programming, medicine, finance and physics never share a cluster.
+- Cluster names are 1 to 3 words, specific and readable: "Python", "Web Development", "Cloud & DevOps",
+  "Databases", "Machine Learning", "Human Biology". Avoid vague names like "General" or "Programming".
 - Every node belongs to exactly one cluster.
-- Technologies that are separate ecosystems get separate clusters: Python ≠ Docker ≠ Git ≠ SQL ≠ JavaScript ≠ TypeScript ≠ React ≠ Kubernetes.
-- Standard library / language tutorials → language cluster. Frameworks with their own ecosystem → dedicated cluster.
-- When two topics feel "related but different" → make two clusters, not one.
 
 EDGE RULES:
 - Connect nodes that share a direct semantic dependency or content overlap.
@@ -912,14 +925,13 @@ Respond with a single JSON object:
 }}"""
 
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = llm_client()
         response = await asyncio.to_thread(
             client.chat.completions.create,
-            model="gpt-5.4-mini",
+            model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
-            temperature=0.0,
-            max_completion_tokens=8000,
+            **token_limit(8000),
         )
 
         result = json.loads(response.choices[0].message.content)
@@ -945,7 +957,7 @@ Respond with a single JSON object:
         ]
 
         logger.info(
-            f"✅ AI graph (gpt-5.4-mini): {len(clusters_list)} clusters, "
+            f"✅ AI graph ({OPENAI_MODEL}): {len(clusters_list)} clusters, "
             f"{len(id_to_cluster)} nodes, {len(valid_edges)} edges"
         )
         return {"id_to_cluster": id_to_cluster, "edges": valid_edges}
@@ -1166,12 +1178,26 @@ async def export_knowledge_graph(force: bool = False):
                     id_to_cluster[sid] = cname
                     id_to_cluster_id[sid] = cid
                 ai_edges = ai_result.get("edges", [])
-                used_method = "ai_gpt4.1-mini"
+                used_method = f"ai_{OPENAI_MODEL}"
                 logger.info(f"✅ AI graph: {len(set(id_to_cluster.values()))} clusters, {len(ai_edges)} edges")
         except Exception as e:
             logger.warning(f"AI graph structure failed: {e}")
 
-        # ── 2. Fallback clustering (no AI edges) ──────────────────────────────────
+        # ── 2. Fallback: clusters, names and edges from the embeddings (no LLM) ──
+        embedding_edges = []
+        if used_method == "topic_specificity":
+            try:
+                emb_assignment, embedding_edges = semantic_graph.build(items, await db.get_embeddings())
+                if emb_assignment:
+                    for sid, (cname, cid) in emb_assignment.items():
+                        id_to_cluster[sid] = cname
+                        id_to_cluster_id[sid] = cid
+                    used_method = "embeddings"
+                    logger.info(f"✅ Embedding graph: {len(set(id_to_cluster.values()))} clusters, {len(embedding_edges)} edges")
+            except Exception as e:
+                logger.warning(f"Embedding graph failed: {e}")
+
+        # ── 2b. Last resort: topic-based clustering ───────────────────────────────
         if used_method == "topic_specificity":
             topic_result = _topic_specificity_clustering(items)
             for sid, (cname, cid) in topic_result.items():
@@ -1179,8 +1205,8 @@ async def export_knowledge_graph(force: bool = False):
                 id_to_cluster_id[sid] = cid
             logger.info(f"✅ Topic clustering fallback: {len(set(id_to_cluster.values()))} clusters")
 
-        # Fill any nodes the AI skipped
-        if used_method.startswith("ai_"):
+        # Fill any nodes the AI or the embedding step skipped
+        if used_method != "topic_specificity":
             unassigned = [item for item in items if str(item['id']) not in id_to_cluster]
             if unassigned:
                 fallback = _topic_specificity_clustering(unassigned)
@@ -1188,6 +1214,17 @@ async def export_knowledge_graph(force: bool = False):
                 for sid, (cname, cid) in fallback.items():
                     id_to_cluster[sid] = cname
                     id_to_cluster_id[sid] = cid + max_id
+
+        # LLMs do not follow cluster counts reliably: fold any cluster under three pages
+        # into the one closest in meaning, so the map stays readable.
+        if used_method.startswith("ai_"):
+            merged = semantic_graph.merge_small_clusters(
+                {sid: (id_to_cluster[sid], id_to_cluster_id[sid]) for sid in id_to_cluster},
+                await db.get_embeddings(),
+            )
+            for sid, (cname, cid) in merged.items():
+                id_to_cluster[sid] = cname
+                id_to_cluster_id[sid] = cid
 
         # ── 3. Build nodes ────────────────────────────────────────────────────────
         nodes = []
@@ -1242,8 +1279,22 @@ async def export_knowledge_graph(force: bool = False):
                     "same_cluster": same,
                 })
                 link_id += 1
+        elif embedding_edges:
+            # Nearest-neighbour edges from the embeddings, with their real similarity
+            for src, tgt, sim in embedding_edges:
+                if src not in node_cluster_map or tgt not in node_cluster_map:
+                    continue
+                seen_pairs.add((src, tgt))
+                same = node_cluster_map[src] == node_cluster_map[tgt]
+                links.append({
+                    "id": f"link_{link_id}",
+                    "source": src, "target": tgt,
+                    "shared_topics": [], "weight": 2 if same else 1,
+                    "similarity": sim, "same_cluster": same,
+                })
+                link_id += 1
         else:
-            # Fallback: connect same-cluster pairs (topic_specificity path, no AI)
+            # Last resort: connect same-cluster pairs (topic_specificity path, no AI)
             cluster_to_nodes = {}
             for node in nodes:
                 cluster_to_nodes.setdefault(node["cluster"], []).append(node["id"])
@@ -1298,13 +1349,13 @@ async def get_stats():
             "by_content_type": analytics.get("by_content_type", {}),
             "quality_distribution": {},
             "average_quality": analytics.get("average_quality", 0),
-            "database": "supabase_vector"
+            "database": "postgres_pgvector"
         }
     except Exception as e:
         return {
             "total_content": 0,
             "error": str(e),
-            "database": "supabase_vector"
+            "database": "postgres_pgvector"
         }
 
 @app.delete("/api/reset")
@@ -1350,19 +1401,6 @@ async def health_check():
             "timestamp": datetime.now().isoformat()
         }
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Mount static files for frontend
-try:
-    # Point to sibling directory ../frontend/build
-    frontend_build_dir = os.path.join(os.path.dirname(BASE_DIR), "frontend", "build")
-    if os.path.exists(frontend_build_dir):
-        app.mount("/static", StaticFiles(directory=frontend_build_dir), name="static")
-        logger.info(f"✅ Static files mounted from {frontend_build_dir}")
-    else:
-        logger.warning(f"⚠️ Static files directory not found at: {frontend_build_dir}")
-except Exception as e:
-    logger.warning(f"⚠️ Static files not mounted: {e}")
-
 @app.get("/")
 async def root():
     return {
@@ -1372,7 +1410,7 @@ async def root():
             "vector_search",
             "content_clustering", 
             "dual_llm_processing",
-            "supabase_database",
+            "postgres_pgvector",
             "rag_chatbot"
         ],
         "endpoints": {

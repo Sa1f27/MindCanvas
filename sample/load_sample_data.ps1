@@ -3,7 +3,7 @@
 # Make sure backend is running on localhost:8090
 
 Write-Host "`n=== MindCanvas Sample Data Loader ===" -ForegroundColor Cyan
-Write-Host "Loading 35 sample URLs into MindCanvas...`n" -ForegroundColor White
+Write-Host "Loading the sample pages into MindCanvas...`n" -ForegroundColor White
 
 $jsonPath = Join-Path $PSScriptRoot "sample_data.json"
 if (-Not (Test-Path $jsonPath)) {
@@ -19,7 +19,7 @@ try {
         -Method POST `
         -ContentType "application/json" `
         -Body $body `
-        -TimeoutSec 300
+        -TimeoutSec 900
 
     Write-Host "`n=== Results ===" -ForegroundColor Green
     Write-Host "Status    : $($response.status)"
@@ -32,5 +32,5 @@ try {
 catch {
     Write-Host "ERROR: Failed to connect. Is the backend running?" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
-    Write-Host "`nStart it with: docker-compose up -d" -ForegroundColor Yellow
+    Write-Host "`nStart it with: docker compose up -d" -ForegroundColor Yellow
 }

@@ -6,6 +6,7 @@ Implements intelligent Q&A with proper error handling and validation
 import asyncio
 import logging
 import os
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dataclasses import dataclass
@@ -25,12 +26,6 @@ logger = logging.getLogger(__name__)
 MAX_CONTEXT_ITEMS = 10
 MIN_SIMILARITY_THRESHOLD = 0.1
 MAX_CONVERSATION_HISTORY = 20
-VALID_OPENAI_MODELS = [
-    "gpt-5.4-mini",
-    "gpt-5.4-nano",
-    "gpt-5.1-mini",
-    "gpt-5.1-nano",
-]
 
 # -----------------------------
 # Pydantic Models with Validation
@@ -103,7 +98,8 @@ class KnowledgeContext:
     quality_score: float
     similarity: float
     summary: str
-    
+    id: str = ""  # the node id, so the UI can highlight the sources it answered from
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'content': self.content,
@@ -166,16 +162,13 @@ class RAGChatbot:
         self.db = db
         self.openai_api_key = openai_key
         
-        # Get model from environment with validation
-        model_name = os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
-        if model_name not in VALID_OPENAI_MODELS:
-            logger.warning(f"Model '{model_name}' not in validated list, using gpt-5.4-mini")
-            model_name = "gpt-5.4-mini"
+        # Same setting as the rest of the backend (see OPENAI_MODEL in main.py)
+        model_name = os.getenv("OPENAI_MODEL", "gpt-6-luna")
         
         try:
             self.llm = ChatOpenAI(
                 model=model_name,
-                temperature=0.3,
+                base_url=os.getenv("OPENAI_BASE_URL") or None,
                 api_key=openai_key,
                 request_timeout=30,
                 max_retries=2
@@ -200,7 +193,7 @@ Guidelines:
 
 GUIDELINES:
 1. **Primary Source**: Prefer information from the 'Context' section when it is relevant and helpful.
-2. **Cite Sources**: When drawing from the context, cite sources as [Source: Title].
+2. **Cite Sources**: When drawing from the context, cite the source number in square brackets right after the claim, like [1] or [2][3]. Do not write source titles in citations.
 3. **Supplement with Knowledge**: If the context is partial or missing details, you may supplement with your general knowledge — but clearly distinguish what comes from the user's saved content vs. your own knowledge.
 4. **Be a Synthesizer**: Connect ideas across sources, summarize findings, and provide actionable insights.
 5. **Be Honest**: If nothing relevant is in the context, say so, but still try to answer helpfully using your general knowledge.
@@ -302,6 +295,7 @@ The context from their knowledge base follows:"""
                         quality_score=float(result.get("quality_score", 0.0)),
                         similarity=float(result.get("similarity", 0.0)),
                         summary=summary,
+                        id=str(result.get("id", "")),
                     ))
                 except Exception as e:
                     logger.error(f"Failed to process result {result.get('id')}: {e}")
@@ -364,6 +358,7 @@ The context from their knowledge base follows:"""
                     quality_score=float(quality),
                     similarity=sim,
                     summary=summary,
+                    id=str(item.get('id', '')),
                 ))
 
             logger.info(f"Keyword fallback: {len(context_items)} context items")
@@ -462,7 +457,7 @@ URL: {item.url}
         avg_similarity = sum(item.similarity for item in context_items) / len(context_items)
         avg_quality = sum(item.quality_score for item in context_items) / (len(context_items) * 10)
         
-        citation_count = response.count("[Source:")
+        citation_count = len(re.findall(r"\[\d+\]", response))
         citation_factor = min(citation_count / len(context_items), 1.0) * 0.2
         
         length_factor = min(len(response) / 500.0, 1.0) * 0.2
@@ -501,6 +496,7 @@ URL: {item.url}
     def _format_source(self, context_item: KnowledgeContext) -> Dict[str, Any]:
         """Format context for API response."""
         return {
+            "id": context_item.id,
             "title": context_item.title,
             "url": context_item.url,
             "content_type": context_item.content_type,

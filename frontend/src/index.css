@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* One neutral instrument around the data. Colour is reserved for clusters (see lib/palette.ts). */
+@theme {
+  --color-ink: #000000;
+  --color-panel: #0a0b0d;
+  --color-panel-2: #111318;
+  --color-line: #1c1f25;
+  --color-line-hi: #2a2e36;
+  --color-fg: #e8eaee;
+  --color-dim: #a0a6b2;
+  --color-mute: #676d7a;
+  --color-live: #8cf06e;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-ink text-fg font-sans antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: hidden;
+  }
+  :focus-visible { outline: 1px solid var(--color-fg); outline-offset: 2px; border-radius: 4px; }
+  ::selection { background: var(--color-fg); color: var(--color-ink); }
+  button { cursor: pointer; }
+}
+
+@layer components {
+  /* Numbers that should line up in columns */
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--color-line-hi) transparent; }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-panel-2 px-3 py-2 text-[14px] text-fg placeholder:text-mute
+      outline-none transition-colors focus:border-line-hi;
+  }
+
+  .icon-btn {
+    @apply inline-flex size-8 items-center justify-center rounded-md text-dim transition-colors hover:bg-panel-2 hover:text-fg;
+  }
+
+  .kbd {
+    @apply rounded border border-line bg-panel-2 px-1.5 py-px font-mono text-[11px] text-mute;
+  }
+
+  /* Chat answers: readable markdown without a typography plugin */
+  .prose-answer p { margin: 0 0 0.75em; }
+  .prose-answer p:last-child { margin-bottom: 0; }
+  .prose-answer ul, .prose-answer ol { margin: 0 0 0.75em; padding-left: 1.2em; }
+  .prose-answer ul { list-style: disc; }
+  .prose-answer ol { list-style: decimal; }
+  .prose-answer li { margin: 0.2em 0; }
+  .prose-answer strong { color: var(--color-fg); font-weight: 600; }
+  .prose-answer code { font-family: var(--font-mono); font-size: 12.5px; }
+  .prose-answer a { text-decoration: underline; text-underline-offset: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

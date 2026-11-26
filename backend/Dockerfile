@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ ENV SENTENCE_TRANSFORMERS_HOME=/app/.st_cache
 RUN pip install --upgrade pip
 
 # Install CPU-only torch first (~200MB vs ~2GB CUDA build)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining deps (cached layer)
 COPY ./requirements.txt /app/
