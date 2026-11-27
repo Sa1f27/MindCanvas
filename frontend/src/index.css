@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
-/* One neutral instrument around the data. Colour is reserved for clusters (see lib/palette.ts). */
+/* The map fills the screen; the panels are dark glass floating over it. Electric indigo marks what you act on,
+   every other colour belongs to the clusters (see lib/palette.ts). */
 @theme {
   --color-ink: #000000;
-  --color-panel: #0a0b0d;
-  --color-panel-2: #111318;
-  --color-line: #1c1f25;
-  --color-line-hi: #2a2e36;
-  --color-fg: #e8eaee;
-  --color-dim: #a0a6b2;
-  --color-mute: #676d7a;
+  --color-panel: #0c0b19;
+  --color-panel-2: #17162b;
+  --color-line: #222039;
+  --color-line-hi: #34315a;
+  --color-fg: #eeedf7;
+  --color-dim: #a6a4c2;
+  --color-mute: #6f6c8e;
   --color-live: #8cf06e;
+  --color-iris: #7a6bff;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -25,11 +27,16 @@
     overflow: hidden;
   }
   :focus-visible { outline: 1px solid var(--color-fg); outline-offset: 2px; border-radius: 4px; }
-  ::selection { background: var(--color-fg); color: var(--color-ink); }
+  ::selection { background: color-mix(in srgb, var(--color-iris) 45%, transparent); }
   button { cursor: pointer; }
 }
 
 @layer components {
+  /* A panel floating over the map: dark glass, so the clusters stay visible behind it. */
+  .glass {
+    @apply rounded-2xl border border-white/[0.07] bg-panel/75 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl;
+  }
+
   /* Numbers that should line up in columns */
   .tnum { font-variant-numeric: tabular-nums; }
 

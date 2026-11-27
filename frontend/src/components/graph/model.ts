@@ -103,7 +103,7 @@ export function litSet(highlight: ReadonlySet<string>, selectedId: string | null
 
 export function tooltipHtml(n: GraphNode, color: string) {
   const esc = (s: string) => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-  return `<div style="font:13px 'IBM Plex Sans',sans-serif;background:#0a0b0d;border:1px solid #2a2e36;border-radius:8px;padding:8px 10px;max-width:280px;color:#e8eaee">
+  return `<div style="font:13px 'Instrument Sans',sans-serif;background:rgba(12,11,25,.92);border:1px solid #34315a;border-radius:10px;padding:8px 10px;max-width:280px;color:#e8eaee">
     <div style="display:flex;gap:6px;align-items:center;color:#a0a6b2;font-size:12px"><span style="width:7px;height:7px;border-radius:9px;background:${color}"></span>${esc(n.cluster)}</div>
     <div style="margin-top:4px;line-height:1.35">${esc(n.title)}</div></div>`;
 }

@@ -2,7 +2,7 @@
 
 MindCanvas turns what you read on the web into a 3D knowledge map you can ask questions of. Every page you read becomes a node, related pages cluster into areas, and when you ask a question the answer cites your own pages and the map lights up the ones it used.
 
-![MindCanvas: a 3D map of 67 pages in 11 clusters](docs/images/map.png)
+![MindCanvas: a 3D map of 65 pages in 12 clusters](docs/images/map.png)
 
 The first version is published as a first-author paper: [An AI System for Transforming Scattered Web Data into an Interactive, Queryable Knowledge Graph](https://ijesr.org/index.php/ijesr/article/view/1635), International Journal of Engineering & Science Research, Vol. 16, Issue 2, April 2026.
 
@@ -13,6 +13,7 @@ The first version is published as a first-author paper: [An AI System for Transf
 - **Answers questions from your pages.** Retrieval-augmented chat answers with numbered citations. The camera turns to the cited pages and lights them up, so you can see where every answer came from.
 - **Finds by meaning.** Search matches titles instantly and pages with the same meaning through vector search, so "learning from data with neural networks" finds the PyTorch and TensorFlow pages. Every match lights up on the map as you type.
 - **Analyses the graph.** Stats show what share of your reading each area takes, the hub pages with the most links, the bridge pages that join separate areas (betweenness centrality, Brandes' algorithm) and which areas connect most.
+- **Shows when you read.** A small activity chart under the clusters shows when each page was read; hovering a stretch of time lights those pages on the map.
 - **Works without an LLM.** With no API key, clusters, names and links come from the embeddings alone (see [How it works](#how-it-works)).
 
 ![Asking a question: the answer cites five pages and the map lights them up](docs/images/ask.png)

@@ -18,18 +18,21 @@ export default function App() {
   }, [load]);
 
   return (
-    <div className="flex h-full flex-col">
-      <TopBar />
-      <main className="flex min-h-0 flex-1">
-        <Rail />
-        <GraphStage />
-        {(askOpen || hasSelection) && (
-          <div className="relative flex shrink-0">
-            {askOpen ? <AskPanel /> : <div className="w-[380px]" />}
-            <NodeSheet />
-          </div>
-        )}
-      </main>
+    // The map is the page; the bar and panels float over it, so the clusters glow behind the glass.
+    <div className="relative h-full overflow-hidden">
+      <GraphStage />
+      <div className="pointer-events-none absolute inset-0 flex flex-col gap-3 p-3">
+        <TopBar />
+        <main className="flex min-h-0 flex-1 justify-between gap-3">
+          <Rail />
+          {(askOpen || hasSelection) && (
+            <div className="pointer-events-auto relative flex shrink-0">
+              {askOpen ? <AskPanel /> : <div className="w-[380px]" />}
+              <NodeSheet />
+            </div>
+          )}
+        </main>
+      </div>
       <CommandPalette />
     </div>
   );

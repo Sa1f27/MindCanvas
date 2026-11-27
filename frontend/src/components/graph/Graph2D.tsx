@@ -4,6 +4,7 @@ import { useGraph } from '../../store/graph';
 import { withAlpha } from '../../lib/palette';
 import { cleanTitle } from '../../lib/format';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { fit2D, useMapInsets } from './viewport';
 import { clusterAnchors, clusterForce, endpointId, focusSet, litSet, tooltipHtml, type SimLink, type SimNode } from './model';
 
 type Methods = ForceGraphMethods<NodeObject<SimNode>, LinkObject<SimNode, SimLink>>;
@@ -22,6 +23,7 @@ export default function Graph2D({ width, height, graph }: Props) {
   const fg = useRef<Methods | undefined>(undefined);
   const fitted = useRef(false);
   const reduced = useReducedMotion();
+  const insets = useMapInsets();
 
   const clusters = useGraph(s => s.clusters);
   const selectedId = useGraph(s => s.selectedId);
@@ -46,7 +48,7 @@ export default function Graph2D({ width, height, graph }: Props) {
     const targets = focusSet(graph.nodes, highlightIds, selectedId);
     const ms = reduced ? 0 : 900;
     if (!targets.length) {
-      api.zoomToFit(ms, 60);
+      fit2D(api, graph.nodes, width, height, insets, ms);
       return;
     }
     const ids = new Set(targets.map(n => n.id));
@@ -73,7 +75,7 @@ export default function Graph2D({ width, height, graph }: Props) {
 
       if (strong || scale >= LABEL_ZOOM) {
         const fontSize = 11 / scale;
-        ctx.font = `${fontSize}px "IBM Plex Sans", sans-serif`;
+        ctx.font = `${fontSize}px "Instrument Sans", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = on ? 'rgba(232,234,238,0.92)' : 'rgba(232,234,238,0.25)';
@@ -116,7 +118,7 @@ export default function Graph2D({ width, height, graph }: Props) {
       onEngineStop={() => {
         if (fitted.current) return;
         fitted.current = true;
-        fg.current?.zoomToFit(reduced ? 0 : 700, 50);
+        if (fg.current) fit2D(fg.current, graph.nodes, width, height, insets, reduced ? 0 : 700);
       }}
       onNodeClick={n => select(n.id)}
       onNodeHover={n => {

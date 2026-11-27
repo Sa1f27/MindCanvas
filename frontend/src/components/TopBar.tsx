@@ -9,8 +9,8 @@ import { plural } from '../lib/format';
 function Mark() {
   return (
     <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-      <path d="M5 14 10 5l5 9z" fill="none" stroke="#2a2e36" strokeWidth="1.2" />
-      <circle cx="10" cy="5" r="2.6" fill="#35d6f2" />
+      <path d="M5 14 10 5l5 9z" fill="none" stroke="#34315a" strokeWidth="1.2" />
+      <circle cx="10" cy="5" r="2.6" fill="#7a6bff" />
       <circle cx="5" cy="14" r="2.6" fill="#8cf06e" />
       <circle cx="15" cy="14" r="2.6" fill="#ff73c6" />
     </svg>
@@ -42,14 +42,14 @@ export default function TopBar() {
   const mac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-3">
+    <header className="glass pointer-events-auto flex h-14 shrink-0 items-center gap-4 px-4">
       <div className="flex items-center gap-2.5 pr-2">
         <Mark />
-        <span className="text-[14px] font-semibold tracking-[-0.01em]">MindCanvas</span>
+        <span className="text-[16px] font-semibold tracking-[-0.02em]">MindCanvas</span>
       </div>
 
       <button onClick={() => openPalette(true)}
-        className="flex h-8 w-full max-w-sm items-center gap-2.5 rounded-lg border border-line bg-panel-2 px-3 text-left text-mute transition-colors hover:border-line-hi">
+        className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 text-left text-mute transition-colors hover:border-white/15 hover:bg-white/[0.07]">
         <Search size={14} />
         <span className="flex-1 text-[13px]">Jump to a page</span>
         <kbd className="kbd">{mac ? '⌘' : 'Ctrl'} K</kbd>
@@ -61,7 +61,7 @@ export default function TopBar() {
           <span className={`size-1.5 rounded-full ${online ? 'bg-live shadow-[0_0_6px_var(--color-live)]' : online === false ? 'bg-[#ff6b6b]' : 'bg-mute'}`} />
           {online === null ? 'Connecting' : online ? 'Online' : 'Offline'}
         </span>
-        <button onClick={toggleAsk} aria-pressed={askOpen} className={`icon-btn ${askOpen ? 'text-fg' : ''}`} aria-label={askOpen ? 'Hide Ask panel' : 'Show Ask panel'} title="Ask">
+        <button onClick={toggleAsk} aria-pressed={askOpen} className={`icon-btn size-9 rounded-full ${askOpen ? 'bg-iris text-white hover:bg-iris hover:text-white' : ''}`} aria-label={askOpen ? 'Hide Ask panel' : 'Show Ask panel'} title="Ask">
           <MessageSquare size={16} strokeWidth={1.75} />
         </button>
       </div>

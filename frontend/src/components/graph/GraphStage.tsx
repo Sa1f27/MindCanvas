@@ -55,39 +55,23 @@ function StatusLayer() {
   return null;
 }
 
-/** Cluster colours at a glance. Hidden while the Clusters panel is open, since that panel lists them. */
-function Legend() {
-  const clusters = useGraph(s => s.clusters);
-  const hidden = useGraph(s => s.hiddenClusters);
-  const panelShowsClusters = useUi(s => s.railOpen && s.railTab === 'clusters');
-  if (!clusters.length || panelShowsClusters) return null;
-  const shown = clusters.slice(0, 8);
-  return (
-    <ul className="pointer-events-none absolute bottom-4 left-4 flex max-w-[60%] flex-wrap gap-x-4 gap-y-1.5 text-[12.5px]">
-      {shown.map(c => (
-        <li key={c.name} className={`flex items-center gap-1.5 ${hidden.has(c.name) ? 'text-mute line-through' : 'text-dim'}`}>
-          <span className="size-2 rounded-full" style={{ background: c.color, boxShadow: `0 0 8px ${c.color}` }} />
-          {c.name}
-        </li>
-      ))}
-      {clusters.length > shown.length && <li className="text-mute">+{clusters.length - shown.length} more</li>}
-    </ul>
-  );
-}
-
 function ViewControls() {
   const view = useGraph(s => s.view);
   const setView = useGraph(s => s.setView);
   const showOnlyCluster = useGraph(s => s.showOnlyCluster);
+  // Sits just left of the right-hand panel when one is open, so the glass never covers it.
+  const askOpen = useUi(s => s.askOpen);
+  const selecting = useGraph(s => s.selectedId !== null);
+  const panelOpen = askOpen || selecting;
   return (
-    <div className="absolute right-4 bottom-4 flex items-center gap-2">
-      <button onClick={() => showOnlyCluster(null)} className="icon-btn border border-line bg-panel/80 backdrop-blur" aria-label="Show everything" title="Show everything">
+    <div className={`absolute bottom-6 flex items-center gap-2 ${panelOpen ? 'right-[408px]' : 'right-6'}`}>
+      <button onClick={() => showOnlyCluster(null)} className="icon-btn border border-white/[0.08] bg-panel/70 backdrop-blur" aria-label="Show everything" title="Show everything">
         <Maximize size={15} />
       </button>
-      <div role="radiogroup" aria-label="View" className="flex rounded-lg border border-line bg-panel/80 p-0.5 backdrop-blur">
+      <div role="radiogroup" aria-label="View" className="flex rounded-full border border-white/[0.08] bg-panel/70 p-0.5 backdrop-blur">
         {(['3d', '2d'] as const).map(v => (
           <button key={v} role="radio" aria-checked={view === v} onClick={() => setView(v)}
-            className={`rounded-md px-2.5 py-1 font-mono text-[12px] uppercase transition-colors ${view === v ? 'bg-panel-2 text-fg' : 'text-mute hover:text-fg'}`}>
+            className={`rounded-full px-3 py-1 text-[12px] font-semibold uppercase transition-colors ${view === v ? 'bg-iris text-white' : 'text-mute hover:text-fg'}`}>
             {v}
           </button>
         ))}
@@ -103,7 +87,7 @@ export default function GraphStage() {
   const graph = useSimGraph();
 
   return (
-    <section ref={ref} aria-label="Knowledge map" className="relative min-w-0 flex-1 overflow-hidden bg-ink">
+    <section ref={ref} aria-label="Knowledge map" className="absolute inset-0 overflow-hidden bg-ink">
       {ready && size.width > 0 && (
         <Suspense fallback={null}>
           {view === '3d'
@@ -112,7 +96,6 @@ export default function GraphStage() {
         </Suspense>
       )}
       <StatusLayer />
-      {ready && <Legend />}
       {ready && <ViewControls />}
     </section>
   );

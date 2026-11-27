@@ -51,7 +51,7 @@ export default function NodeSheet() {
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
       aria-label="Page details"
-      className="absolute inset-y-0 right-0 z-10 flex w-[380px] flex-col border-l border-line bg-panel"
+      className="glass absolute inset-y-0 right-0 z-10 flex w-[380px] flex-col overflow-hidden !bg-panel/90"
     >
       <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <span className="flex min-w-0 items-center gap-2 text-[13px] text-dim">

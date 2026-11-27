@@ -6,6 +6,7 @@ import SpriteText from 'three-spritetext';
 import { useGraph } from '../../store/graph';
 import { dim } from '../../lib/palette';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { fit3D, useMapInsets } from './viewport';
 import { clusterAnchors, clusterForce, endpointId, focusSet, litSet, tooltipHtml, type SimLink, type SimNode } from './model';
 
 type Methods = ForceGraphMethods<NodeObject<SimNode>, LinkObject<SimNode, SimLink>>;
@@ -21,6 +22,7 @@ export default function Graph3D({ width, height, graph }: Props) {
   const fg = useRef<Methods | undefined>(undefined);
   const fitted = useRef(false);
   const reduced = useReducedMotion();
+  const insets = useMapInsets();
 
   const clusters = useGraph(s => s.clusters);
   const selectedId = useGraph(s => s.selectedId);
@@ -34,7 +36,7 @@ export default function Graph3D({ width, height, graph }: Props) {
   useEffect(() => {
     const api = fg.current;
     if (!api) return;
-    const bloom = new UnrealBloomPass(new Vector2(width, height), 1.15, 0.6, 0.08);
+    const bloom = new UnrealBloomPass(new Vector2(width, height), 0.75, 0.45, 0.12);
     api.postProcessingComposer().addPass(bloom);
     return () => {
       api.postProcessingComposer().removePass(bloom);
@@ -55,7 +57,7 @@ export default function Graph3D({ width, height, graph }: Props) {
       if (!visible.has(c.name)) continue;
       // Constant size on screen (no perspective), like labels on a map: near ones never balloon, far ones stay legible.
       const sprite = new SpriteText(c.name, 0.0125, c.color);
-      sprite.fontFace = 'IBM Plex Sans';
+      sprite.fontFace = 'Instrument Sans';
       sprite.fontWeight = '500';
       sprite.material.depthWrite = false;
       sprite.material.sizeAttenuation = false;
@@ -112,7 +114,7 @@ export default function Graph3D({ width, height, graph }: Props) {
     const targets = focusSet(graph.nodes, highlightIds, selectedId).filter(n => n.x !== undefined);
     const ms = reduced ? 0 : 1100;
     if (!targets.length) {
-      api.zoomToFit(ms, 60);
+      fit3D(api, graph.nodes, width, height, insets, ms);
       return;
     }
     const centre = (ns: SimNode[]) => {
@@ -169,9 +171,9 @@ export default function Graph3D({ width, height, graph }: Props) {
       graphData={graph}
       backgroundColor="#000000"
       showNavInfo={false}
-      nodeRelSize={3.2}
+      nodeRelSize={2.8}
       nodeResolution={18}
-      nodeOpacity={0.95}
+      nodeOpacity={0.9}
       nodeVal={nodeVal}
       nodeColor={nodeColor}
       nodeLabel={n => tooltipHtml(n, n.color)}
@@ -188,7 +190,7 @@ export default function Graph3D({ width, height, graph }: Props) {
         placeLabels();
         if (fitted.current) return;
         fitted.current = true;
-        fg.current?.zoomToFit(reduced ? 0 : 800, 80);
+        if (fg.current) fit3D(fg.current, graph.nodes, width, height, insets, reduced ? 0 : 800);
       }}
       onNodeClick={n => select(n.id)}
       onNodeHover={n => {

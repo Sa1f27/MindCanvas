@@ -40,12 +40,12 @@ function PaletteDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[14vh]"
+    <motion.div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 backdrop-blur-sm pt-[14vh]"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }}
       onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <motion.div role="dialog" aria-modal="true" aria-label="Jump to a page"
         initial={{ y: -8, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: -8, scale: 0.98 }} transition={{ duration: 0.14 }}
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-line-hi bg-panel shadow-2xl shadow-black">
+        className="w-full max-w-xl overflow-hidden glass !bg-panel/90">
         <label className="flex items-center gap-3 border-b border-line px-4">
           <Search size={16} className="text-mute" />
           <input autoFocus value={query} placeholder="Jump to a page"
